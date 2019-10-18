@@ -1,0 +1,3 @@
+publish_courses_on_import: true
+update_courses_titles: true
+update_courses_prices: true

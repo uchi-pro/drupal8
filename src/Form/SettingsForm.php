@@ -53,6 +53,24 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('access_token'),
     ];
 
+    $form['publish_courses_on_import'] = [
+      '#type' => 'checkbox',
+      '#title' => 'Публиковать курсы при импорте',
+      '#default_value' => $config->get('publish_courses_on_import'),
+    ];
+
+    $form['update_courses_titles'] = [
+      '#type' => 'checkbox',
+      '#title' => 'Обновлять названия курсов при импорте',
+      '#default_value' => $config->get('update_courses_titles'),
+    ];
+
+    $form['update_courses_prices'] = [
+      '#type' => 'checkbox',
+      '#title' => 'Обновлять цены курсов при импорте',
+      '#default_value' => $config->get('update_courses_prices'),
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -109,6 +127,9 @@ class SettingsForm extends ConfigFormBase {
     $login = $form_state->getValue('login');
     $password = $form_state->getValue('password');
     $accessToken = $form_state->getValue('access_token');
+    $publishCoursesOnImport = $form_state->getValue('publish_courses_on_import');
+    $updateCoursesTitles = $form_state->getValue('update_courses_titles');
+    $updateCoursesPrices = $form_state->getValue('update_courses_prices');
 
     $config = $this->configFactory->getEditable(static::SETTINGS);
     $config->set('url', $url);
@@ -117,6 +138,9 @@ class SettingsForm extends ConfigFormBase {
       $config->set('password', $password);
     }
     $config->set('access_token', $accessToken);
+    $config->set('publish_courses_on_import', $publishCoursesOnImport);
+    $config->set('update_courses_titles', $updateCoursesTitles);
+    $config->set('update_courses_prices', $updateCoursesPrices);
     $config->save();
 
     parent::submitForm($form, $form_state);
@@ -229,6 +253,12 @@ class SettingsForm extends ConfigFormBase {
    */
   protected function updateCourses(array $apiCourses)
   {
+    $config = $this->config(static::SETTINGS);
+
+    $publishCoursesOnImport = $config->get('publish_courses_on_import');
+    $updateCoursesTitles = $config->get('update_courses_titles');
+    $updateCoursesPrices = $config->get('update_courses_prices');
+
     $coursesNodes = $this->getCoursesNodes();
     $themesNodes = $this->getThemesNodes();
 
@@ -242,15 +272,19 @@ class SettingsForm extends ConfigFormBase {
         continue;
       }
 
+      $shortTitle = mb_substr($apiCourse->title, 0, 250);
+      $fullTitle = mb_substr($apiCourse->title, 0, 2000);
+
       if (isset($coursesNodes[$apiCourse->id])) {
         $node = $coursesNodes[$apiCourse->id];
       } else {
         $node = Node::create([
           'type' => 'course',
-          'status' => 1,
-          'title' => mb_substr($apiCourse->title, 0, 250),
-          'field_course_title' => ['value' => mb_substr($apiCourse->title, 0, 2000)],
+          'status' => $publishCoursesOnImport ? 1 : 0,
+          'title' => $shortTitle,
+          'field_course_title' => ['value' => $fullTitle],
           'field_course_uuid' => ['value' => $apiCourse->id],
+          'field_course_price' => ['value' => $apiCourse->price],
         ]);
       }
 
@@ -258,9 +292,18 @@ class SettingsForm extends ConfigFormBase {
       $node->set('field_course_theme', [
         'entity' => $courseTheme,
       ]);
-      $node->set('field_course_price', [
-        'value' => $apiCourse->price,
-      ]);
+
+      if ($updateCoursesTitles) {
+        $node->set('title', $shortTitle);
+        $node->set('field_course_title', $fullTitle);
+      }
+
+      if ($updateCoursesPrices) {
+        $node->set('field_course_price', [
+          'value' => $apiCourse->price,
+        ]);
+      }
+
       $node->set('field_course_hours', [
         'value' => $apiCourse->hours,
       ]);
