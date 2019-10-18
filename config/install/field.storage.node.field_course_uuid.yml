@@ -1,0 +1,23 @@
+langcode: ru
+status: true
+dependencies:
+  enforced:
+    module:
+      - uchi_pro
+  module:
+    - node
+id: node.field_course_uuid
+field_name: field_course_uuid
+entity_type: node
+type: string
+settings:
+  max_length: 36
+  is_ascii: true
+  case_sensitive: false
+module: core
+locked: true
+cardinality: 1
+translatable: false
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

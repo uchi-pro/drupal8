@@ -1,0 +1,7 @@
+uchi_pro.settings:
+  path: '/admin/config/content/uchi-pro'
+  defaults:
+    _title: 'Настройки интеграции с Uchi.pro'
+    _form: '\Drupal\uchi_pro\Form\SettingsForm'
+  requirements:
+    _permission: 'administer site configuration'

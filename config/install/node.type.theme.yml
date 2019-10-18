@@ -1,0 +1,13 @@
+langcode: ru
+status: true
+dependencies:
+  enforced:
+    module:
+      - uchi_pro
+name: 'Направление обучения'
+type: theme
+description: ''
+help: ''
+new_revision: true
+preview_mode: 0
+display_submitted: true

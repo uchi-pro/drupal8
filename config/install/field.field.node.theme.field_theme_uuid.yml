@@ -1,0 +1,18 @@
+langcode: ru
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_theme_uuid
+    - node.type.theme
+id: node.theme.field_theme_uuid
+field_name: field_theme_uuid
+entity_type: node
+bundle: theme
+label: 'Идентификатор в СДО'
+description: ''
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

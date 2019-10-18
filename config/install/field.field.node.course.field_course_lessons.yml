@@ -1,0 +1,18 @@
+langcode: ru
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_course_lessons
+    - node.type.course
+id: node.course.field_course_lessons
+field_name: field_course_lessons
+entity_type: node
+bundle: course
+label: 'Учебный план'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

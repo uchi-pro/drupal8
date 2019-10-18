@@ -1,0 +1,15 @@
+langcode: ru
+status: true
+dependencies:
+  enforced:
+    module:
+      - uchi_pro
+  config:
+    - node.type.theme
+name: Курс
+type: course
+description: ''
+help: ''
+new_revision: false
+preview_mode: 0
+display_submitted: false

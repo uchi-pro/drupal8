@@ -1,0 +1,18 @@
+langcode: ru
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_course_title
+    - node.type.course
+id: node.course.field_course_title
+field_name: field_course_title
+entity_type: node
+bundle: course
+label: Название
+description: ''
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string
