@@ -47,10 +47,10 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('password'),
     ];
 
-    $form['token'] = [
+    $form['access_token'] = [
       '#type' => 'textfield',
       '#title' => 'Токен',
-      '#default_value' => $config->get('token'),
+      '#default_value' => $config->get('access_token'),
     ];
 
     return parent::buildForm($form, $form_state);
@@ -61,9 +61,17 @@ class SettingsForm extends ConfigFormBase {
     parent::validateForm($form, $form_state);
 
     $url = $form_state->getValue('url');
+    try {
+      $url = ApiClient::prepareUrl($url);
+    } catch (Exception $e) {
+      $form_state->setErrorByName('url', 'Невалидный URL.');
+      return;
+    }
+    $form_state->setValue('url', $url);
+
     $login = $form_state->getValue('login');
     $password = $form_state->getValue('password');
-    $token = $form_state->getValue('token');
+    $accessToken = $form_state->getValue('access_token');
 
     if (empty($password)) {
       $config = $this->config(static::SETTINGS);
@@ -72,8 +80,8 @@ class SettingsForm extends ConfigFormBase {
 
     try {
       $identity = null;
-      if ($token) {
-        $identity = Identity::createByAccessToken($url, $token);
+      if ($accessToken) {
+        $identity = Identity::createByAccessToken($url, $accessToken);
       } elseif ($login) {
         $identity = Identity::createByLogin($url, $login, $password);
       }
@@ -100,6 +108,7 @@ class SettingsForm extends ConfigFormBase {
     $url = $form_state->getValue('url');
     $login = $form_state->getValue('login');
     $password = $form_state->getValue('password');
+    $accessToken = $form_state->getValue('access_token');
 
     $config = $this->configFactory->getEditable(static::SETTINGS);
     $config->set('url', $url);
@@ -107,6 +116,7 @@ class SettingsForm extends ConfigFormBase {
     if ($password) {
       $config->set('password', $password);
     }
+    $config->set('access_token', $accessToken);
     $config->save();
 
     parent::submitForm($form, $form_state);
