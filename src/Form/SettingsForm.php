@@ -5,12 +5,13 @@ namespace Drupal\uchi_pro\Form;
 use Drupal;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Markup;
+use Drupal\node\Entity\Node;
 use Drupal\uchi_pro\Exception\BadRoleException;
 use Exception;
 use UchiPro\ApiClient;
 use UchiPro\Courses\Course as ApiCourse;
 use UchiPro\Identity;
-use \Drupal\node\Entity\Node;
 
 class SettingsForm extends ConfigFormBase {
 
@@ -255,62 +256,97 @@ class SettingsForm extends ConfigFormBase {
   {
     $config = $this->config(static::SETTINGS);
 
-    $publishCoursesOnImport = $config->get('publish_courses_on_import');
-    $updateCoursesTitles = $config->get('update_courses_titles');
-    $updateCoursesPrices = $config->get('update_courses_prices');
+    $needPublishCoursesOnImport = $config->get('publish_courses_on_import');
+    $needUpdateCoursesTitles = $config->get('update_courses_titles');
+    $needUpdateCoursesPrices = $config->get('update_courses_prices');
 
     $coursesNodes = $this->getCoursesNodes();
     $themesNodes = $this->getThemesNodes();
 
     foreach ($apiCourses as $apiCourse) {
-      $courseParentIsTheme = isset($themesNodes[$apiCourse->parentId]);
-      if (!$courseParentIsTheme) {
+      $isParentTheme = isset($themesNodes[$apiCourse->parentId]);
+      if (!$isParentTheme) {
         continue;
       }
-      $courseHasLessons = $apiCourse->lessonsCount > 0;
-      if (!$courseHasLessons) {
+      $hasLessons = $apiCourse->lessonsCount > 0;
+      if (!$hasLessons) {
         continue;
       }
+
+      $apiCourse = clone $apiCourse;
+      $apiCourse->title = mb_substr($apiCourse->title, 0, 2000);
+
+      $courseNode = isset($coursesNodes[$apiCourse->id]) ? $coursesNodes[$apiCourse->id] : null;
+      $isNew = empty($courseNode);
+      $needSave = false;
+
+      $previousApiCourse = $this->createApiCourseByNode($courseNode);
 
       $shortTitle = mb_substr($apiCourse->title, 0, 250);
-      $fullTitle = mb_substr($apiCourse->title, 0, 2000);
 
-      if (isset($coursesNodes[$apiCourse->id])) {
-        $node = $coursesNodes[$apiCourse->id];
-      } else {
-        $node = Node::create([
+      if (!$courseNode) {
+        $needSave = true;
+        $courseNode = Node::create([
           'type' => 'course',
-          'status' => $publishCoursesOnImport ? 1 : 0,
+          'status' => $needPublishCoursesOnImport ? 1 : 0,
           'title' => $shortTitle,
-          'field_course_title' => ['value' => $fullTitle],
+          'field_course_title' => ['value' => $apiCourse->title],
           'field_course_uuid' => ['value' => $apiCourse->id],
           'field_course_price' => ['value' => $apiCourse->price],
         ]);
       }
 
-      $courseTheme = $themesNodes[$apiCourse->parentId];
-      $node->set('field_course_theme', [
-        'entity' => $courseTheme,
-      ]);
-
-      if ($updateCoursesTitles) {
-        $node->set('title', $shortTitle);
-        $node->set('field_course_title', $fullTitle);
-      }
-
-      if ($updateCoursesPrices) {
-        $node->set('field_course_price', [
-          'value' => $apiCourse->price,
+      if ($apiCourse->parentId != $previousApiCourse->parentId) {
+        $needSave = true;
+        $courseTheme = $themesNodes[$apiCourse->parentId];
+        $courseNode->set('field_course_theme', [
+          'entity' => $courseTheme,
         ]);
       }
 
-      $node->set('field_course_hours', [
-        'value' => $apiCourse->hours,
-      ]);
+      if ($needUpdateCoursesTitles) {
+        if ($apiCourse->title != $previousApiCourse->title) {
+          $needSave = true;
+          $courseNode->set('title', $shortTitle);
+          $courseNode->set('field_course_title', $apiCourse->title);
+        }
+      }
 
-      $node->save();
+      if ($needUpdateCoursesPrices) {
+        if ($apiCourse->price != $previousApiCourse->price) {
+          $needSave = true;
+          $courseNode->set('field_course_price', ['value' => $apiCourse->price]);
+        }
+      }
+
+      if ($apiCourse->hours != $previousApiCourse->hours) {
+        $needSave = true;
+        $courseNode->set('field_course_hours', ['value' => $apiCourse->hours]);
+      }
+
+      if ($needSave) {
+        $courseNode->save();
+        $coursesNodes[$apiCourse->id] = $courseNode;
+
+        $messageText = "Курс <a href=\"/node/{$courseNode->id()}/edit\">{$apiCourse->title}</a> " . ($isNew ? ' импортирован' : 'обновлен') . '.';
+        $message = Markup::create($messageText);
+        Drupal::messenger()->addMessage($message);
+      }
     }
 
     return $coursesNodes;
+  }
+
+  private function createApiCourseByNode(Node $node)
+  {
+    $apiCourse = new ApiCourse();
+
+    $apiCourse->id = $node->get('field_course_uuid')->getString();
+    $apiCourse->parentId = $node->get('field_course_theme')->entity->get('field_theme_uuid')->getString();
+    $apiCourse->title = $node->get('field_course_title')->getString();
+    $apiCourse->price = $node->get('field_course_price')->getString();
+    $apiCourse->hours = $node->get('field_course_hours')->getString();
+
+    return $apiCourse;
   }
 }
