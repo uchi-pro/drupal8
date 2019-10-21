@@ -41,8 +41,11 @@ class ImportCoursesService
     $url = $config->get('url');
     $login = $config->get('login');
     $password = $config->get('password');
+    $accessToken = $config->get('access_token');
 
-    $identity = Identity::createByLogin($url, $login, $password);
+    $identity = !empty($accessToken)
+      ? Identity::createByAccessToken($url, $accessToken)
+      : Identity::createByLogin($url, $login, $password);
     $apiClient = ApiClient::create($identity);
 
     return $apiClient->courses()->findBy();

@@ -156,6 +156,9 @@ class SettingsForm extends ConfigFormBase {
         $importCoursesService->importCourses();
       } catch (Exception $e) {
         watchdog_exception('error', $e);
+        if ($e = $e->getPrevious()) {
+          watchdog_exception('error', $e);
+        }
         drupal_set_message('Не удалось обновить курсы.');
       }
     }
