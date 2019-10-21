@@ -2,12 +2,12 @@ langcode: ru
 status: true
 dependencies:
   config:
-    - field.storage.node.field_theme_uuid
-    - node.type.theme
-id: node.theme.field_theme_uuid
-field_name: field_theme_uuid
+    - field.storage.node.field_course_id
+    - node.type.course
+id: node.course.field_course_id
+field_name: field_course_id
 entity_type: node
-bundle: theme
+bundle: course
 label: 'Идентификатор в СДО'
 description: ''
 required: true

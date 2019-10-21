@@ -6,8 +6,8 @@ dependencies:
       - uchi_pro
   module:
     - node
-id: node.field_theme_uuid
-field_name: field_theme_uuid
+id: node.field_theme_id
+field_name: field_theme_id
 entity_type: node
 type: string
 settings:
