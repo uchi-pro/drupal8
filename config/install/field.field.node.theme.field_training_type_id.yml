@@ -1,0 +1,18 @@
+langcode: ru
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_training_type_id
+    - node.type.training_type
+id: node.theme.field_training_type_id
+field_name: field_training_type_id
+entity_type: node
+bundle: theme
+label: 'Идентификатор в СДО'
+description: ''
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

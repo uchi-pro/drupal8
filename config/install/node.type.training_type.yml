@@ -1,0 +1,13 @@
+langcode: ru
+status: true
+dependencies:
+  enforced:
+    module:
+      - uchi_pro
+name: 'Вид обучения'
+type: training_type
+description: ''
+help: ''
+new_revision: false
+preview_mode: 0
+display_submitted: false
