@@ -69,6 +69,12 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('update_courses_prices'),
     ];
 
+    $form['start_import'] = [
+      '#type' => 'checkbox',
+      '#title' => 'Запустить импорт после сохранения настроек',
+      '#default_value' => true,
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -143,12 +149,15 @@ class SettingsForm extends ConfigFormBase {
 
     parent::submitForm($form, $form_state);
 
-    try {
-      $importCoursesService = new ImportCoursesService();
-      $importCoursesService->importCourses();
-    } catch (Exception $e) {
-      watchdog_exception('error', $e);
-      drupal_set_message('Не удалось обновить курсы.');
+    $startImport = $form_state->getValue('start_import');
+    if ($startImport) {
+      try {
+        $importCoursesService = new ImportCoursesService();
+        $importCoursesService->importCourses();
+      } catch (Exception $e) {
+        watchdog_exception('error', $e);
+        drupal_set_message('Не удалось обновить курсы.');
+      }
     }
   }
 }
