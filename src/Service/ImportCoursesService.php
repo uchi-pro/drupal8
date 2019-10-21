@@ -51,6 +51,21 @@ class ImportCoursesService
     return $apiClient->courses()->findBy();
   }
 
+  protected function getTypesNodes()
+  {
+    $nids = Drupal::entityQuery('node')->condition('type','training_type')->execute();
+    $nodes = Node::loadMultiple($nids);
+
+    $nodesByIds = [];
+
+    foreach ($nodes as $node) {
+      $themeId = $node->get('field_theme_id')->getString();
+      $nodesByIds[$themeId] = $node;
+    }
+
+    return $nodesByIds;
+  }
+
   protected function getThemesNodes()
   {
     $nids = Drupal::entityQuery('node')->condition('type','theme')->execute();
@@ -59,7 +74,7 @@ class ImportCoursesService
     $nodesByIds = [];
 
     foreach ($nodes as $node) {
-      $themeId = $node->get('field_theme_uuid')->getString();
+      $themeId = $node->get('field_theme_id')->getString();
       $nodesByIds[$themeId] = $node;
     }
 
@@ -74,7 +89,7 @@ class ImportCoursesService
     $nodesByIds = [];
 
     foreach ($nodes as $node) {
-      $courseId = $node->get('field_course_uuid')->getString();
+      $courseId = $node->get('field_course_id')->getString();
       $nodesByIds[$courseId] = $node;
     }
 
@@ -104,7 +119,7 @@ class ImportCoursesService
         $node = Node::create([
           'type' => 'theme',
           'title' => mb_substr($apiCourse->title, 0, 250),
-          'field_theme_uuid' => ['value' => $apiCourse->id],
+          'field_theme_id' => ['value' => $apiCourse->id],
         ]);
       }
 
@@ -160,7 +175,7 @@ class ImportCoursesService
           'status' => $needPublishCoursesOnImport ? 1 : 0,
           'title' => $shortTitle,
           'field_course_title' => ['value' => $apiCourse->title],
-          'field_course_uuid' => ['value' => $apiCourse->id],
+          'field_course_id' => ['value' => $apiCourse->id],
           'field_course_price' => ['value' => $apiCourse->price],
         ]);
       }
@@ -210,8 +225,8 @@ class ImportCoursesService
   {
     $apiCourse = new ApiCourse();
 
-    $apiCourse->id = $node->get('field_course_uuid')->getString();
-    $apiCourse->parentId = $node->get('field_course_theme')->entity->get('field_theme_uuid')->getString();
+    $apiCourse->id = $node->get('field_course_id')->getString();
+    $apiCourse->parentId = $node->get('field_course_theme')->entity->get('field_theme_id')->getString();
     $apiCourse->title = $node->get('field_course_title')->getString();
     $apiCourse->price = $node->get('field_course_price')->getString();
     $apiCourse->hours = $node->get('field_course_hours')->getString();
