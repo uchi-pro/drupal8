@@ -18,10 +18,11 @@ class ImportCoursesService
    */
   public function importCourses()
   {
-    $courses = $this->fetchCourses();
+    $apiCourses = $this->fetchApiCourses();
 
-    $this->updateThemes($courses);
-    $this->updateCourses($courses);
+    $this->updateTypes($apiCourses);
+    $this->updateThemes($apiCourses);
+    $this->updateCourses($apiCourses);
   }
 
   private function getConfig()
@@ -34,7 +35,7 @@ class ImportCoursesService
    *
    * @throws Exception
    */
-  protected function fetchCourses()
+  protected function fetchApiCourses()
   {
     $config = $this->getConfig();
 
@@ -59,7 +60,7 @@ class ImportCoursesService
     $nodesByIds = [];
 
     foreach ($nodes as $node) {
-      $themeId = $node->get('field_theme_id')->getString();
+      $themeId = $node->get('field_training_type_id')->getString();
       $nodesByIds[$themeId] = $node;
     }
 
@@ -103,6 +104,42 @@ class ImportCoursesService
    *
    * @throws Exception
    */
+  protected function updateTypes(array $apiCourses)
+  {
+    $typesNodes = $this->getTypesNodes();
+
+    foreach ($apiCourses as $apiCourse) {
+      if (empty($apiCourse->type->id)) {
+        continue;
+      }
+
+      $type = $apiCourse->type;
+
+      if (isset($typesNodes[$type->id])) {
+        $node = $typesNodes[$type->id];
+      } else {
+        $node = Node::create([
+          'type' => 'training_type',
+          'title' => $type->title,
+          'field_training_type_id' => ['value' => $type->id],
+        ]);
+      }
+
+      $node->save();
+
+      $typesNodes[$type->id] = $node;
+    }
+
+    return $typesNodes;
+  }
+
+  /**
+   * @param array|ApiCourse[] $apiCourses
+   *
+   * @return array|Node[]
+   *
+   * @throws Exception
+   */
   protected function updateThemes(array $apiCourses)
   {
     $themesNodes = $this->getThemesNodes();
@@ -124,6 +161,8 @@ class ImportCoursesService
       }
 
       $node->save();
+
+      $themesNodes[$apiCourse->id] = $node;
     }
 
     return $themesNodes;
@@ -216,6 +255,8 @@ class ImportCoursesService
         $message = Markup::create($messageText);
         Drupal::messenger()->addMessage($message);
       }
+
+      $coursesNodes[$apiCourse->id] = $courseNode;
     }
 
     return $coursesNodes;
