@@ -19,7 +19,7 @@ class ImportCoursesService
   public function importCourses()
   {
     if (!$this->settingsExists()) {
-      throw new Exception('Не указаны настройки.');
+      throw new Exception('Не указаны настройки для импорта курсов.');
     }
 
     try {

@@ -32,24 +32,36 @@ class SettingsForm extends ConfigFormBase {
       '#type' => 'textfield',
       '#title' => 'URL СДО',
       '#default_value' => $config->get('url'),
+      '#attributes' => [
+        'autocomplete' => 'off',
+      ],
     ];
 
     $form['login'] = [
       '#type' => 'textfield',
       '#title' => 'Логин',
       '#default_value' => $config->get('login'),
+      '#attributes' => [
+        'autocomplete' => 'off',
+      ],
     ];
 
     $form['password'] = [
       '#type' => 'password',
       '#title' => 'Пароль',
       '#default_value' => $config->get('password'),
+      '#attributes' => [
+        'autocomplete' => 'off',
+      ],
     ];
 
     $form['access_token'] = [
       '#type' => 'textfield',
       '#title' => 'Токен',
       '#default_value' => $config->get('access_token'),
+      '#attributes' => [
+        'autocomplete' => 'off',
+      ],
     ];
 
     $form['publish_courses_on_import'] = [
@@ -90,6 +102,10 @@ class SettingsForm extends ConfigFormBase {
     parent::validateForm($form, $form_state);
 
     $url = $form_state->getValue('url');
+    if (empty($url)) {
+      return;
+    }
+
     try {
       $url = ApiClient::prepareUrl($url);
     } catch (Exception $e) {
