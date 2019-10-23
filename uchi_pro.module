@@ -1,0 +1,19 @@
+<?php
+
+use Drupal\uchi_pro\Form\SettingsForm;
+use Drupal\uchi_pro\Service\ImportCoursesService;
+
+function uchi_pro_cron() {
+
+  $settings = Drupal::config(SettingsForm::SETTINGS);
+
+  $useCron = $settings->get('use_cron');
+  if ($useCron) {
+    try {
+      $importCoursesService = new ImportCoursesService();
+      $importCoursesService->importCourses();
+    } catch (Exception $e) {
+      watchdog_exception('error', $e);
+    }
+  }
+}

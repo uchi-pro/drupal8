@@ -2,6 +2,7 @@
 
 namespace Drupal\uchi_pro\Form;
 
+use Drupal;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\uchi_pro\Exception\BadRoleException;
@@ -69,6 +70,12 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('update_courses_prices'),
     ];
 
+    $form['use_cron'] = [
+      '#type' => 'checkbox',
+      '#title' => 'Запускать импорт курсов по крону',
+      '#default_value' => $config->get('use_cron'),
+    ];
+
     $form['start_import'] = [
       '#type' => 'checkbox',
       '#title' => 'Запустить импорт после сохранения настроек',
@@ -134,6 +141,7 @@ class SettingsForm extends ConfigFormBase {
     $publishCoursesOnImport = $form_state->getValue('publish_courses_on_import');
     $updateCoursesTitles = $form_state->getValue('update_courses_titles');
     $updateCoursesPrices = $form_state->getValue('update_courses_prices');
+    $useCron = $form_state->getValue('use_cron');
 
     $config = $this->configFactory->getEditable(static::SETTINGS);
     $config->set('url', $url);
@@ -145,6 +153,7 @@ class SettingsForm extends ConfigFormBase {
     $config->set('publish_courses_on_import', $publishCoursesOnImport);
     $config->set('update_courses_titles', $updateCoursesTitles);
     $config->set('update_courses_prices', $updateCoursesPrices);
+    $config->set('use_cron', $useCron);
     $config->save();
 
     parent::submitForm($form, $form_state);
@@ -155,11 +164,7 @@ class SettingsForm extends ConfigFormBase {
         $importCoursesService = new ImportCoursesService();
         $importCoursesService->importCourses();
       } catch (Exception $e) {
-        watchdog_exception('error', $e);
-        if ($e = $e->getPrevious()) {
-          watchdog_exception('error', $e);
-        }
-        drupal_set_message('Не удалось обновить курсы.');
+        Drupal::messenger()->addMessage($e->getMessage(), 'error');
       }
     }
   }

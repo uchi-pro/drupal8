@@ -18,16 +18,39 @@ class ImportCoursesService
    */
   public function importCourses()
   {
-    $apiCourses = $this->fetchApiCourses();
+    if (!$this->settingsExists()) {
+      throw new Exception('Не указаны настройки.');
+    }
 
-    $this->updateTypes($apiCourses);
-    $this->updateThemes($apiCourses);
-    $this->updateCourses($apiCourses);
+    try {
+      $apiCourses = $this->fetchApiCourses();
+
+      $this->updateTypes($apiCourses);
+      $this->updateThemes($apiCourses);
+      $this->updateCourses($apiCourses);
+    } catch (Exception $exception) {
+      $lastException = $exception;
+      watchdog_exception('error', $exception);
+      while ($exception = $exception->getPrevious()) {
+        watchdog_exception('error', $exception);
+      }
+      throw new Exception('Не удалось импортировать курсы.', 0, $lastException);
+    }
   }
 
-  private function getConfig()
+  private function getSettings()
   {
     return Drupal::config(SettingsForm::SETTINGS);
+  }
+
+  /**
+   * @return bool
+   */
+  public function settingsExists()
+  {
+    $settings = $this->getSettings();
+    $url = $settings->get('url');
+    return !empty($url);
   }
 
   /**
@@ -37,12 +60,12 @@ class ImportCoursesService
    */
   protected function fetchApiCourses()
   {
-    $config = $this->getConfig();
+    $settings = $this->getSettings();
 
-    $url = $config->get('url');
-    $login = $config->get('login');
-    $password = $config->get('password');
-    $accessToken = $config->get('access_token');
+    $url = $settings->get('url');
+    $login = $settings->get('login');
+    $password = $settings->get('password');
+    $accessToken = $settings->get('access_token');
 
     $identity = !empty($accessToken)
       ? Identity::createByAccessToken($url, $accessToken)
@@ -177,15 +200,16 @@ class ImportCoursesService
    */
   protected function updateCourses(array $apiCourses)
   {
-    $config = $this->getConfig();
+    $settings = $this->getSettings();
 
-    $needPublishCoursesOnImport = $config->get('publish_courses_on_import');
-    $needUpdateCoursesTitles = $config->get('update_courses_titles');
-    $needUpdateCoursesPrices = $config->get('update_courses_prices');
+    $needPublishCoursesOnImport = $settings->get('publish_courses_on_import');
+    $needUpdateCoursesTitles = $settings->get('update_courses_titles');
+    $needUpdateCoursesPrices = $settings->get('update_courses_prices');
 
     $coursesNodes = $this->getCoursesNodes();
     $themesNodes = $this->getThemesNodes();
 
+    $count = 0;
     foreach ($apiCourses as $apiCourse) {
       $isParentTheme = isset($themesNodes[$apiCourse->parentId]);
       if (!$isParentTheme) {
@@ -248,6 +272,8 @@ class ImportCoursesService
       }
 
       if ($needSave) {
+        $count++;
+
         $courseNode->save();
         $coursesNodes[$apiCourse->id] = $courseNode;
 
@@ -258,6 +284,9 @@ class ImportCoursesService
 
       $coursesNodes[$apiCourse->id] = $courseNode;
     }
+
+    Drupal::messenger()->addMessage("Обновлено курсов: {$count}");
+    Drupal::logger('uchi_pro')->info("Обновлено курсов: {$count}");
 
     return $coursesNodes;
   }
