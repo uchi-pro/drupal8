@@ -4,7 +4,7 @@ dependencies:
   config:
     - field.storage.node.field_training_type_id
     - node.type.training_type
-id: node.theme.field_training_type_id
+id: node.field_training.field_training_type_id
 field_name: field_training_type_id
 entity_type: node
 bundle: training_type
