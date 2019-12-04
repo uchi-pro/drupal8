@@ -209,23 +209,30 @@ class ImportCoursesService
     $coursesNodes = $this->getCoursesNodes();
     $themesNodes = $this->getThemesNodes();
 
-    $count = 0;
-    foreach ($apiCourses as $apiCourse) {
+    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodes) {
       $isParentTheme = isset($themesNodes[$apiCourse->parentId]);
       if (!$isParentTheme) {
-        continue;
+        return FALSE;
       }
       $hasLessons = $apiCourse->lessonsCount > 0;
       if (!$hasLessons) {
-        continue;
+        return FALSE;
       }
+      $isPriceEmpty = !is_numeric($apiCourse->price);
+      if ($isPriceEmpty) {
+        return FALSE;
+      }
+      return TRUE;
+    });
 
+    $count = 0;
+    foreach ($suitableApiCourses as $apiCourse) {
       $apiCourse = clone $apiCourse;
       $apiCourse->title = mb_substr($apiCourse->title, 0, 2000);
 
       $courseNode = isset($coursesNodes[$apiCourse->id]) ? $coursesNodes[$apiCourse->id] : null;
       $isNew = empty($courseNode);
-      $needSave = false;
+      $needSave = FALSE;
 
       $previousApiCourse = $courseNode ? $this->createApiCourseByNode($courseNode) : new ApiCourse();
 
