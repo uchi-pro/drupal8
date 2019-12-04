@@ -5,6 +5,7 @@ namespace Drupal\uchi_pro\Service;
 use Drupal;
 use Drupal\Core\Render\Markup;
 use Drupal\node\Entity\Node;
+use Drupal\node\NodeInterface;
 use Drupal\uchi_pro\Form\SettingsForm;
 use Exception;
 use UchiPro\ApiClient;
@@ -90,6 +91,9 @@ class ImportCoursesService
     return $nodesByIds;
   }
 
+  /**
+   * @return NodeInterface[]
+   */
   protected function getThemesNodes()
   {
     $nids = Drupal::entityQuery('node')->condition('type','theme')->execute();
@@ -105,6 +109,9 @@ class ImportCoursesService
     return $nodesByIds;
   }
 
+  /**
+   * @return NodeInterface[]
+   */
   protected function getCoursesNodes()
   {
     $nids = Drupal::entityQuery('node')->condition('type','course')->execute();
@@ -206,11 +213,13 @@ class ImportCoursesService
     $needUpdateCoursesTitles = $settings->get('update_courses_titles');
     $needUpdateCoursesPrices = $settings->get('update_courses_prices');
 
-    $coursesNodes = $this->getCoursesNodes();
-    $themesNodes = $this->getThemesNodes();
+    $coursesNodesByIds = $this->getCoursesNodes();
+    $themesNodesByIds = $this->getThemesNodes();
 
-    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodes) {
-      $isParentTheme = isset($themesNodes[$apiCourse->parentId]);
+    $existsIds = array_keys($coursesNodesByIds);
+
+    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds) {
+      $isParentTheme = isset($themesNodesByIds[$apiCourse->parentId]);
       if (!$isParentTheme) {
         return FALSE;
       }
@@ -220,17 +229,22 @@ class ImportCoursesService
       }
       $isPriceEmpty = !is_numeric($apiCourse->price);
       if ($isPriceEmpty) {
+        $this->warning("Курс <a href=\"{$this->getApiCourseUrl($apiCourse)}\" target=\"_blank\">{$apiCourse->title}</a> пропущен: не указана стоимость обучения.");
         return FALSE;
       }
       return TRUE;
     });
 
-    $count = 0;
+    $updatedCount = 0;
     foreach ($suitableApiCourses as $apiCourse) {
       $apiCourse = clone $apiCourse;
       $apiCourse->title = mb_substr($apiCourse->title, 0, 2000);
 
-      $courseNode = isset($coursesNodes[$apiCourse->id]) ? $coursesNodes[$apiCourse->id] : null;
+      $courseNode = null;
+      if (isset($coursesNodesByIds[$apiCourse->id])) {
+        $courseNode = $coursesNodesByIds[$apiCourse->id];
+        unset($existsIds[array_search($apiCourse->id, $existsIds)]);
+      };
       $isNew = empty($courseNode);
       $needSave = FALSE;
 
@@ -252,7 +266,7 @@ class ImportCoursesService
 
       if ($apiCourse->parentId != $previousApiCourse->parentId) {
         $needSave = true;
-        $courseTheme = $themesNodes[$apiCourse->parentId];
+        $courseTheme = $themesNodesByIds[$apiCourse->parentId];
         $courseNode->set('field_course_theme', [
           'entity' => $courseTheme,
         ]);
@@ -279,23 +293,63 @@ class ImportCoursesService
       }
 
       if ($needSave) {
-        $count++;
+        $updatedCount++;
 
         $courseNode->save();
-        $coursesNodes[$apiCourse->id] = $courseNode;
+        $coursesNodesByIds[$apiCourse->id] = $courseNode;
 
-        $messageText = "Курс <a href=\"/node/{$courseNode->id()}/edit\">{$apiCourse->title}</a> " . ($isNew ? ' импортирован' : 'обновлен') . '.';
-        $message = Markup::create($messageText);
-        Drupal::messenger()->addMessage($message);
+        $this->status("Курс <a href=\"/node/{$courseNode->id()}/edit\" target=\"_blank\">{$courseNode->get('field_course_title')->getString()}</a> " . ($isNew ? ' импортирован' : 'обновлен') . '.');
       }
 
-      $coursesNodes[$apiCourse->id] = $courseNode;
+      $coursesNodesByIds[$apiCourse->id] = $courseNode;
     }
 
-    Drupal::messenger()->addMessage("Обновлено курсов: {$count}");
-    Drupal::logger('uchi_pro')->info("Обновлено курсов: {$count}");
+    $unpublishedCount = 0;
+    foreach ($existsIds as $courseId) {
+      $courseNode = $coursesNodesByIds[$courseId];
 
-    return $coursesNodes;
+      if ($courseNode->isPublished()) {
+        $unpublishedCount++;
+        $courseNode->setUnpublished();
+        $courseNode->save();
+
+        $this->status("Курс <a href=\"/node/{$courseNode->id()}/edit\" target=\"_blank\">{$courseNode->get('field_course_title')->getString()}</a> снят с публикации.");
+      }
+    }
+
+    $this->log("Обновлено курсов: {$updatedCount}");
+    $this->log("Снято с публикации курсов: {$unpublishedCount}");
+
+    return $coursesNodesByIds;
+  }
+
+  private function status($messageText)
+  {
+    $message = Markup::create($messageText);
+    $messanger = Drupal::messenger();
+    $messanger->addMessage($message, $messanger::TYPE_STATUS);
+  }
+
+  private function warning($messageText)
+  {
+    $message = Markup::create($messageText);
+    $messanger = Drupal::messenger();
+    $messanger->addMessage($message, $messanger::TYPE_WARNING);
+  }
+
+  private function log($message)
+  {
+    $this->status($message);
+    Drupal::logger('uchi_pro')->info($message);
+  }
+
+  private function getApiCourseUrl(ApiCourse $apiCourse)
+  {
+    $settings = $this->getSettings();
+
+    $url = $settings->get('url');
+
+    return "{$url}/courses/{$apiCourse->id}";
   }
 
   private function createApiCourseByNode(Node $node)
