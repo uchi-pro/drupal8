@@ -218,9 +218,13 @@ class ImportCoursesService
 
     $existsIds = array_keys($coursesNodesByIds);
 
-    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds) {
+    $ignoredThemesIds = explode("\n", $settings->get('ignored_themes_ids'));
+    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds, $ignoredThemesIds) {
       $isParentTheme = isset($themesNodesByIds[$apiCourse->parentId]);
       if (!$isParentTheme) {
+        return FALSE;
+      }
+      if (in_array($apiCourse->parentId, $ignoredThemesIds)) {
         return FALSE;
       }
       $hasLessons = $apiCourse->lessonsCount > 0;

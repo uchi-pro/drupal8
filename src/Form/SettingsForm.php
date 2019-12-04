@@ -64,6 +64,14 @@ class SettingsForm extends ConfigFormBase {
       ],
     ];
 
+    $form['ignored_themes_ids'] = [
+      '#type' => 'textarea',
+      '#title' => 'Идентификаторы направлений, курсы по которым не должны импортироваться на сайт',
+      '#rows' => 2,
+      '#default_value' => $config->get('ignored_themes_ids'),
+      '#description' => 'По одному идентификатору направления вида 00000000-0000-0000-C000-000000000000 в строку.',
+    ];
+
     $form['publish_courses_on_import'] = [
       '#type' => 'checkbox',
       '#title' => 'Публиковать курсы при импорте',
@@ -154,10 +162,15 @@ class SettingsForm extends ConfigFormBase {
     $login = $form_state->getValue('login');
     $password = $form_state->getValue('password');
     $accessToken = $form_state->getValue('access_token');
+    $ignoredThemesIds = $form_state->getValue('ignored_themes_ids');
     $publishCoursesOnImport = $form_state->getValue('publish_courses_on_import');
     $updateCoursesTitles = $form_state->getValue('update_courses_titles');
     $updateCoursesPrices = $form_state->getValue('update_courses_prices');
     $useCron = $form_state->getValue('use_cron');
+
+    $ignoredThemesIds = implode("\n", array_map(function ($id) {
+      return trim($id);
+    }, explode("\n", trim($ignoredThemesIds))));
 
     $config = $this->configFactory->getEditable(static::SETTINGS);
     $config->set('url', $url);
@@ -166,6 +179,7 @@ class SettingsForm extends ConfigFormBase {
       $config->set('password', $password);
     }
     $config->set('access_token', $accessToken);
+    $config->set('ignored_themes_ids', $ignoredThemesIds);
     $config->set('publish_courses_on_import', $publishCoursesOnImport);
     $config->set('update_courses_titles', $updateCoursesTitles);
     $config->set('update_courses_prices', $updateCoursesPrices);
