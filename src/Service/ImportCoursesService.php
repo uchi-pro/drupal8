@@ -174,9 +174,16 @@ class ImportCoursesService
   {
     $themesNodes = $this->getThemesNodes();
 
+    $settings = $this->getSettings();
+    $ignoredThemesIds = explode("\n", $settings->get('ignored_themes_ids'));
+
     foreach ($apiCourses as $apiCourse) {
       $isTheme = $apiCourse->depth === 0 && $apiCourse->lessonsCount === 0 && $apiCourse->childrenCount > 0;
       if (!$isTheme) {
+        continue;
+      }
+      if (in_array($apiCourse->id, $ignoredThemesIds)) {
+        $this->warning("Направление <a href=\"{$this->getApiCourseUrl($apiCourse)}\" target='_blank'>{$apiCourse->title}</a> пропущено согласно настройкам интеграции.");
         continue;
       }
 
@@ -216,15 +223,11 @@ class ImportCoursesService
     $coursesNodesByIds = $this->getCoursesNodes();
     $themesNodesByIds = $this->getThemesNodes();
 
-    $existsIds = array_keys($coursesNodesByIds);
+    $coursesForUnpublishIds = array_keys($coursesNodesByIds);
 
-    $ignoredThemesIds = explode("\n", $settings->get('ignored_themes_ids'));
-    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds, $ignoredThemesIds) {
+    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds) {
       $isParentTheme = isset($themesNodesByIds[$apiCourse->parentId]);
       if (!$isParentTheme) {
-        return FALSE;
-      }
-      if (in_array($apiCourse->parentId, $ignoredThemesIds)) {
         return FALSE;
       }
       $hasLessons = $apiCourse->lessonsCount > 0;
@@ -247,7 +250,7 @@ class ImportCoursesService
       $courseNode = null;
       if (isset($coursesNodesByIds[$apiCourse->id])) {
         $courseNode = $coursesNodesByIds[$apiCourse->id];
-        unset($existsIds[array_search($apiCourse->id, $existsIds)]);
+        unset($coursesForUnpublishIds[array_search($apiCourse->id, $coursesForUnpublishIds)]);
       };
       $isNew = empty($courseNode);
       $needSave = FALSE;
@@ -309,7 +312,7 @@ class ImportCoursesService
     }
 
     $unpublishedCount = 0;
-    foreach ($existsIds as $courseId) {
+    foreach ($coursesForUnpublishIds as $courseId) {
       $courseNode = $coursesNodesByIds[$courseId];
 
       if ($courseNode->isPublished()) {
