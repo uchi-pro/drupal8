@@ -144,6 +144,10 @@ class SettingsForm extends ConfigFormBase {
       return trim($id);
     }, explode("\n", trim($ignoredThemesIds))));
 
+    if (empty($accessToken)) {
+      $useCron = 0;
+    }
+
     $config = $this->configFactory->getEditable(static::SETTINGS);
     $config->set('url', $url);
     $config->set('access_token', $accessToken);
