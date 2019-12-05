@@ -33,18 +33,12 @@ class SettingsForm extends ConfigFormBase {
       '#type' => 'textfield',
       '#title' => 'URL СДО',
       '#default_value' => $config->get('url'),
-      '#attributes' => [
-        'autocomplete' => 'off',
-      ],
     ];
 
     $form['access_token'] = [
       '#type' => 'textfield',
       '#title' => 'Токен',
       '#default_value' => $config->get('access_token'),
-      '#attributes' => [
-        'autocomplete' => 'off',
-      ],
     ];
 
     $form['ignored_themes_ids'] = [
