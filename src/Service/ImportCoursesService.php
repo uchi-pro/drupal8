@@ -44,16 +44,6 @@ class ImportCoursesService
     return Drupal::config(SettingsForm::SETTINGS);
   }
 
-  private function getUrl()
-  {
-    return $this->getSettings()->get('url');
-  }
-
-  private function getAccessToken()
-  {
-    return $this->getSettings()->get('access_token');
-  }
-
   /**
    * @return bool
    */

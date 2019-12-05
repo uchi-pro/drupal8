@@ -22,3 +22,8 @@ function uchi_pro_get_url() {
   $settings = Drupal::config(SettingsForm::SETTINGS);
   return $settings->get('url');
 }
+
+function uchi_pro_get_access_token() {
+  $settings = Drupal::config(SettingsForm::SETTINGS);
+  return $settings->get('access_token');
+}
