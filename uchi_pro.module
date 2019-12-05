@@ -17,3 +17,8 @@ function uchi_pro_cron() {
     }
   }
 }
+
+function uchi_pro_get_url() {
+  $settings = Drupal::config(SettingsForm::SETTINGS);
+  return $settings->get('url');
+}
