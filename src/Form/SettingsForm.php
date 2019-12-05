@@ -92,6 +92,9 @@ class SettingsForm extends ConfigFormBase {
     }
 
     try {
+      if (strpos($url, 'http') !== 0) {
+        $url = "http://{$url}";
+      }
       $url = ApiClient::prepareUrl($url);
     } catch (Exception $e) {
       $form_state->setErrorByName('url', 'Невалидный URL.');
@@ -101,6 +104,10 @@ class SettingsForm extends ConfigFormBase {
 
     $accessToken = $form_state->getValue('access_token');
     if (empty($accessToken)) {
+      $startImport = $form_state->getValue('start_import');
+      if ($startImport) {
+        $form_state->setErrorByName('url', Markup::create("Для запуска импорта после сохранения настроек укажите токен для доступа менеджера со страницы <a href=\"{$url}/vendors/128#other\" target=\"_blank\">настроек вендора</a>."));
+      }
       return;
     }
 
@@ -117,7 +124,7 @@ class SettingsForm extends ConfigFormBase {
         }
       }
     } catch (BadRoleException $e) {
-      $form_state->setErrorByName('url', Markup::create("Укажите токен для доступа менеджера <a href=\"{$url}/vendors/128#other\" target=\"_blank\">со страницы настроек вендора</a>."));
+      $form_state->setErrorByName('url', Markup::create("Укажите актуальный токен для доступа менеджера со страницы <a href=\"{$url}/vendors/128#other\" target=\"_blank\">настроек вендора</a>."));
     } catch (Exception $e) {
       watchdog_exception('error', $e);
       $form_state->setErrorByName('url', 'Не удалось подключиться к СДО.');
