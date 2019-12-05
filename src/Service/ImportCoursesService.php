@@ -256,6 +256,8 @@ class ImportCoursesService
 
       $shortTitle = mb_substr($apiCourse->title, 0, 250);
 
+      $plan = $apiCourse->academicPlan;
+
       if (!$courseNode) {
         $needSave = true;
         $courseNode = Node::create([
@@ -294,6 +296,13 @@ class ImportCoursesService
       if ($apiCourse->hours != $previousApiCourse->hours) {
         $needSave = true;
         $courseNode->set('field_course_hours', ['value' => $apiCourse->hours]);
+      }
+
+      $serializedPlan = $this->getSerializedPlan($apiCourse);
+      $previousSerializedPlan = $courseNode->get('field_course_plan')->getString();
+      if ($serializedPlan != $previousSerializedPlan) {
+        $needSave = true;
+        $courseNode->set('field_course_plan', ['value' => $serializedPlan]);
       }
 
       if ($needSave) {
@@ -367,5 +376,20 @@ class ImportCoursesService
     $apiCourse->hours = $node->get('field_course_hours')->getString();
 
     return $apiCourse;
+  }
+
+  private function getSerializedPlan(ApiCourse $apiCourse)
+  {
+    $plan = [];
+
+    foreach ($apiCourse->academicPlan->items as $item) {
+      $plan[] = [
+        'title' => $item->title,
+        'hours' => $item->hours,
+        'type' => $item->type->title,
+      ];
+    }
+
+    return serialize($plan);
   }
 }

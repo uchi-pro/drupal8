@@ -6,8 +6,8 @@ dependencies:
       - uchi_pro
   module:
     - node
-id: node.field_course_lessons
-field_name: field_course_lessons
+id: node.field_course_plan
+field_name: field_course_plan
 entity_type: node
 type: string_long
 settings:
