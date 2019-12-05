@@ -1,0 +1,6 @@
+services:
+  uchi_pro.uchi_pro_clear:
+    class: Drupal\uchi_pro\Command\ClearCommand
+    arguments: []
+    tags:
+      - { name: drupal.command }
