@@ -20,7 +20,7 @@ class ImportCoursesService
   public function importCourses()
   {
     if (!$this->settingsExists()) {
-      throw new Exception('Не указаны настройки для импорта курсов.');
+      throw new Exception('Не заполнены настройки для импорта курсов.');
     }
 
     try {
@@ -44,6 +44,16 @@ class ImportCoursesService
     return Drupal::config(SettingsForm::SETTINGS);
   }
 
+  private function getUrl()
+  {
+    return $this->getSettings()->get('url');
+  }
+
+  private function getAccessToken()
+  {
+    return $this->getSettings()->get('access_token');
+  }
+
   /**
    * @return bool
    */
@@ -51,7 +61,8 @@ class ImportCoursesService
   {
     $settings = $this->getSettings();
     $url = $settings->get('url');
-    return !empty($url);
+    $accessToken = $settings->get('access_token');
+    return !empty($url) && !empty($accessToken);
   }
 
   /**
@@ -64,13 +75,9 @@ class ImportCoursesService
     $settings = $this->getSettings();
 
     $url = $settings->get('url');
-    $login = $settings->get('login');
-    $password = $settings->get('password');
     $accessToken = $settings->get('access_token');
 
-    $identity = !empty($accessToken)
-      ? Identity::createByAccessToken($url, $accessToken)
-      : Identity::createByLogin($url, $login, $password);
+    $identity = Identity::createByAccessToken($url, $accessToken);
     $apiClient = ApiClient::create($identity);
 
     return $apiClient->courses()->findBy();

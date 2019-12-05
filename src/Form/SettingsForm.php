@@ -5,6 +5,7 @@ namespace Drupal\uchi_pro\Form;
 use Drupal;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Markup;
 use Drupal\uchi_pro\Exception\BadRoleException;
 use Drupal\uchi_pro\Service\ImportCoursesService;
 use Exception;
@@ -32,24 +33,6 @@ class SettingsForm extends ConfigFormBase {
       '#type' => 'textfield',
       '#title' => 'URL СДО',
       '#default_value' => $config->get('url'),
-      '#attributes' => [
-        'autocomplete' => 'off',
-      ],
-    ];
-
-    $form['login'] = [
-      '#type' => 'textfield',
-      '#title' => 'Логин',
-      '#default_value' => $config->get('login'),
-      '#attributes' => [
-        'autocomplete' => 'off',
-      ],
-    ];
-
-    $form['password'] = [
-      '#type' => 'password',
-      '#title' => 'Пароль',
-      '#default_value' => $config->get('password'),
       '#attributes' => [
         'autocomplete' => 'off',
       ],
@@ -122,34 +105,25 @@ class SettingsForm extends ConfigFormBase {
     }
     $form_state->setValue('url', $url);
 
-    $login = $form_state->getValue('login');
-    $password = $form_state->getValue('password');
     $accessToken = $form_state->getValue('access_token');
-
-    if (empty($password)) {
-      $config = $this->config(static::SETTINGS);
-      $password = $config->get('password');
+    if (empty($accessToken)) {
+      return;
     }
 
     try {
-      $identity = null;
-      if ($accessToken) {
-        $identity = Identity::createByAccessToken($url, $accessToken);
-      } elseif ($login) {
-        $identity = Identity::createByLogin($url, $login, $password);
-      }
+      $identity = Identity::createByAccessToken($url, $accessToken);
 
       if ($identity) {
         $apiClient = ApiClient::create($identity);
 
         $me = $apiClient->users()->getMe();
 
-        if (!in_array($me->role->id, ['administrator', 'manager'])) {
+        if (!in_array($me->role->id, ['manager'])) {
           throw new BadRoleException();
         }
       }
     } catch (BadRoleException $e) {
-      $form_state->setErrorByName('url', 'Нужны данные администратора или менеджера.');
+      $form_state->setErrorByName('url', Markup::create("Укажите токен для доступа менеджера <a href=\"{$url}/vendors/128#other\" target=\"_blank\">со страницы настроек вендора</a>."));
     } catch (Exception $e) {
       watchdog_exception('error', $e);
       $form_state->setErrorByName('url', 'Не удалось подключиться к СДО.');
@@ -159,8 +133,6 @@ class SettingsForm extends ConfigFormBase {
   public function submitForm(array &$form, FormStateInterface $form_state)
   {
     $url = $form_state->getValue('url');
-    $login = $form_state->getValue('login');
-    $password = $form_state->getValue('password');
     $accessToken = $form_state->getValue('access_token');
     $ignoredThemesIds = $form_state->getValue('ignored_themes_ids');
     $publishCoursesOnImport = $form_state->getValue('publish_courses_on_import');
@@ -174,10 +146,6 @@ class SettingsForm extends ConfigFormBase {
 
     $config = $this->configFactory->getEditable(static::SETTINGS);
     $config->set('url', $url);
-    $config->set('login', $login);
-    if ($password) {
-      $config->set('password', $password);
-    }
     $config->set('access_token', $accessToken);
     $config->set('ignored_themes_ids', $ignoredThemesIds);
     $config->set('publish_courses_on_import', $publishCoursesOnImport);
