@@ -10,7 +10,6 @@ use Drupal\uchi_pro\Exception\BadRoleException;
 use Drupal\uchi_pro\Service\ImportCoursesService;
 use Exception;
 use UchiPro\ApiClient;
-use UchiPro\Identity;
 
 class SettingsForm extends ConfigFormBase {
 

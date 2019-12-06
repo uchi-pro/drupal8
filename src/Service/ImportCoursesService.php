@@ -382,12 +382,14 @@ class ImportCoursesService
   {
     $plan = [];
 
-    foreach ($apiCourse->academicPlan->items as $item) {
-      $plan[] = [
-        'title' => $item->title,
-        'hours' => $item->hours,
-        'type' => $item->type->title,
-      ];
+    if (!empty($apiCourse->academicPlan)) {
+      foreach ($apiCourse->academicPlan->items as $item) {
+        $plan[] = [
+          'title' => $item->title,
+          'hours' => $item->hours,
+          'type' => $item->type->title,
+        ];
+      }
     }
 
     return serialize($plan);
