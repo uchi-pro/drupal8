@@ -1,7 +1,10 @@
 <?php
 
+use Drupal\uchi_pro\Exception\BadRoleException;
 use Drupal\uchi_pro\Form\SettingsForm;
 use Drupal\uchi_pro\Service\ImportCoursesService;
+use UchiPro\ApiClient;
+use UchiPro\Identity;
 
 function uchi_pro_cron() {
 
@@ -26,4 +29,22 @@ function uchi_pro_get_url() {
 function uchi_pro_get_access_token() {
   $settings = Drupal::config(SettingsForm::SETTINGS);
   return $settings->get('access_token');
+}
+
+/**
+ * @param string $url
+ * @param string $access_token
+ *
+ * @throws BadRoleException
+ */
+function uchi_pro_check_access_token($url = NULL, $access_token = NULL) {
+  $identity = Identity::createByAccessToken($url, $access_token);
+
+  $apiClient = ApiClient::create($identity);
+
+  $me = $apiClient->users()->getMe();
+
+  if (!in_array($me->role->id, ['manager'])) {
+    throw new BadRoleException();
+  }
 }

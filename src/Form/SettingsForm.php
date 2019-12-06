@@ -112,17 +112,7 @@ class SettingsForm extends ConfigFormBase {
     }
 
     try {
-      $identity = Identity::createByAccessToken($url, $accessToken);
-
-      if ($identity) {
-        $apiClient = ApiClient::create($identity);
-
-        $me = $apiClient->users()->getMe();
-
-        if (!in_array($me->role->id, ['manager'])) {
-          throw new BadRoleException();
-        }
-      }
+      uchi_pro_check_access_token($url, $accessToken);
     } catch (BadRoleException $e) {
       $form_state->setErrorByName('url', Markup::create("Укажите актуальный токен для доступа менеджера со страницы <a href=\"{$url}/vendors/128#other\" target=\"_blank\">настроек вендора</a>."));
     } catch (Exception $e) {
