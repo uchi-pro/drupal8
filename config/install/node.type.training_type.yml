@@ -4,7 +4,7 @@ dependencies:
   enforced:
     module:
       - uchi_pro
-name: 'Вид обучения'
+name: 'Тип обучения'
 type: training_type
 description: ''
 help: ''

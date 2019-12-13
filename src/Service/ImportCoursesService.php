@@ -10,6 +10,7 @@ use Drupal\uchi_pro\Form\SettingsForm;
 use Exception;
 use UchiPro\ApiClient;
 use UchiPro\Courses\Course as ApiCourse;
+use UchiPro\Courses\CourseType as ApiCourseType;
 use UchiPro\Identity;
 
 class ImportCoursesService
@@ -219,6 +220,7 @@ class ImportCoursesService
 
     $coursesNodesByIds = $this->getCoursesNodes();
     $themesNodesByIds = $this->getThemesNodes();
+    $typesNodesByIds = $this->getTypesNodes();
 
     $coursesForUnpublishIds = array_keys($coursesNodesByIds);
 
@@ -256,8 +258,6 @@ class ImportCoursesService
 
       $shortTitle = mb_substr($apiCourse->title, 0, 250);
 
-      $plan = $apiCourse->academicPlan;
-
       if (!$courseNode) {
         $needSave = true;
         $courseNode = Node::create([
@@ -276,6 +276,21 @@ class ImportCoursesService
         $courseNode->set('field_course_theme', [
           'entity' => $courseTheme,
         ]);
+      }
+
+      $typeAppeared = empty($previousApiCourse->type->id) && !empty($apiCourse->type->id);
+      $typeFaded = !empty($previousApiCourse->type->id) && empty($apiCourse->type->id);
+      $typesChanged = !empty($previousApiCourse->type->id) && !empty($apiCourse->type->id) && ($previousApiCourse->type->id != $apiCourse->type->id);
+      if ($typeAppeared || $typeFaded || $typesChanged) {
+        $needSave = true;
+        if ($typeFaded) {
+          $courseNode->set('field_course_type', null);
+        } else {
+          $courseType = $typesNodesByIds[$apiCourse->type->id];
+          $courseNode->set('field_course_training_type', [
+            'entity' => $courseType,
+          ]);
+        }
       }
 
       if ($needUpdateCoursesTitles) {
@@ -370,7 +385,14 @@ class ImportCoursesService
     $apiCourse = new ApiCourse();
 
     $apiCourse->id = $node->get('field_course_id')->getString();
-    $apiCourse->parentId = $node->get('field_course_theme')->entity->get('field_theme_id')->getString();
+    if (isset($node->get('field_course_theme')->entity)) {
+      $apiCourse->parentId = $node->get('field_course_theme')->entity->get('field_theme_id')->getString();
+    }
+    if (isset($node->get('field_course_training_type')->entity)) {
+      $type = new ApiCourseType();
+      $type->id = $node->get('field_course_training_type')->entity->get('field_training_type_id')->getString();
+      $apiCourse->type = $type;
+    }
     $apiCourse->title = $node->get('field_course_title')->getString();
     $apiCourse->price = $node->get('field_course_price')->getString();
     $apiCourse->hours = $node->get('field_course_hours')->getString();
