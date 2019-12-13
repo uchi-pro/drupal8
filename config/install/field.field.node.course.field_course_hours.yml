@@ -19,4 +19,4 @@ settings:
   max: null
   prefix: ''
   suffix: ' учебных часов'
-field_type: integer
+field_type: decimal

@@ -9,10 +9,10 @@ dependencies:
 id: node.field_course_price
 field_name: field_course_price
 entity_type: node
-type: integer
+type: decimal
 settings:
-  unsigned: false
-  size: normal
+  precision: 10
+  scale: 2
 module: core
 locked: false
 cardinality: 1
