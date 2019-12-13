@@ -317,7 +317,7 @@ class ImportCoursesService
       $previousSerializedPlan = $courseNode->get('field_course_plan')->getString();
       if ($serializedPlan != $previousSerializedPlan) {
         $needSave = true;
-        $courseNode->set('field_course_plan', ['value' => $serializedPlan]);
+        $courseNode->set('field_course_plan', $serializedPlan ? ['value' => $serializedPlan] : null);
       }
 
       if ($needSave) {
@@ -414,6 +414,6 @@ class ImportCoursesService
       }
     }
 
-    return serialize($plan);
+    return !empty($plan) ? serialize($plan) : null;
   }
 }
