@@ -213,6 +213,7 @@ class ImportCoursesService
   protected function updateCourses(array $apiCourses)
   {
     $settings = $this->getSettings();
+    $ignoredThemesIds = explode("\n", $settings->get('ignored_themes_ids'));
 
     $needPublishCoursesOnImport = $settings->get('publish_courses_on_import');
     $needUpdateCoursesTitles = $settings->get('update_courses_titles');
@@ -224,9 +225,12 @@ class ImportCoursesService
 
     $coursesForUnpublishIds = array_keys($coursesNodesByIds);
 
-    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds) {
+    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds, $ignoredThemesIds) {
       $isParentTheme = isset($themesNodesByIds[$apiCourse->parentId]);
       if (!$isParentTheme) {
+        return FALSE;
+      }
+      if (in_array($apiCourse->parentId, $ignoredThemesIds)) {
         return FALSE;
       }
       $hasLessons = $apiCourse->lessonsCount > 0;
