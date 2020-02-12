@@ -235,6 +235,7 @@ class ImportCoursesService
       }
       $hasLessons = $apiCourse->lessonsCount > 0;
       if (!$hasLessons) {
+        $this->warning("Курс <a href=\"{$this->getApiCourseUrl($apiCourse)}\" target=\"_blank\">{$apiCourse->title}</a> пропущен: не содержит уроков.");
         return FALSE;
       }
       $isPriceEmpty = !is_numeric($apiCourse->price);
