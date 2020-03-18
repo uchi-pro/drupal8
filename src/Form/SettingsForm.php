@@ -28,19 +28,29 @@ class SettingsForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = $this->config(static::SETTINGS);
 
-    $form['url'] = [
+    $form['identity'] = [
+      '#type' => 'fieldset',
+      '#title' => 'Доступ к СДО',
+    ];
+
+    $form['identity']['url'] = [
       '#type' => 'textfield',
       '#title' => 'URL СДО',
       '#default_value' => $config->get('url'),
     ];
 
-    $form['access_token'] = [
+    $form['identity']['access_token'] = [
       '#type' => 'textfield',
       '#title' => 'Токен',
       '#default_value' => $config->get('access_token'),
     ];
 
-    $form['ignored_themes_ids'] = [
+    $form['import_courses'] = [
+      '#type' => 'fieldset',
+      '#title' => 'Импорт курсов',
+    ];
+
+    $form['import_courses']['ignored_themes_ids'] = [
       '#type' => 'textarea',
       '#title' => 'Идентификаторы направлений, курсы по которым не должны импортироваться на сайт',
       '#rows' => 2,
@@ -48,31 +58,31 @@ class SettingsForm extends ConfigFormBase {
       '#description' => 'По одному идентификатору направления вида 00000000-0000-0000-C000-000000000000 в строку.',
     ];
 
-    $form['publish_courses_on_import'] = [
+    $form['import_courses']['publish_courses_on_import'] = [
       '#type' => 'checkbox',
       '#title' => 'Публиковать курсы при импорте',
       '#default_value' => $config->get('publish_courses_on_import'),
     ];
 
-    $form['update_courses_titles'] = [
+    $form['import_courses']['update_courses_titles'] = [
       '#type' => 'checkbox',
       '#title' => 'Обновлять названия курсов при импорте',
       '#default_value' => $config->get('update_courses_titles'),
     ];
 
-    $form['update_courses_prices'] = [
+    $form['import_courses']['update_courses_prices'] = [
       '#type' => 'checkbox',
       '#title' => 'Обновлять цены курсов при импорте',
       '#default_value' => $config->get('update_courses_prices'),
     ];
 
-    $form['use_cron'] = [
+    $form['import_courses']['use_cron'] = [
       '#type' => 'checkbox',
       '#title' => 'Запускать импорт курсов по крону',
       '#default_value' => $config->get('use_cron'),
     ];
 
-    $form['start_import'] = [
+    $form['import_courses']['start_import'] = [
       '#type' => 'checkbox',
       '#title' => 'Запустить импорт после сохранения настроек',
       '#default_value' => true,
