@@ -88,6 +88,26 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => true,
     ];
 
+    $moduleHandler = \Drupal::service('module_handler');
+    if ($moduleHandler->moduleExists('webform')) {
+      $form['leads'] = [
+        '#type' => 'fieldset',
+        '#title' => 'Создание лидов',
+      ];
+
+      $webforms = \Drupal::entityTypeManager()->getStorage('webform')->loadMultiple(null);
+      $webforms_options = [];
+      foreach ($webforms as $webform) {
+        $webforms_options[$webform->id()] = $webform->label();
+      }
+      $form['leads']['leads_webforms'] = [
+        '#type' => 'checkboxes',
+        '#title' => 'Создавать лиды с форм',
+        '#options' => $webforms_options,
+        '#default_value' => $config->get('leads_webforms'),
+      ];
+    }
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -139,6 +159,9 @@ class SettingsForm extends ConfigFormBase {
     $updateCoursesTitles = $form_state->getValue('update_courses_titles');
     $updateCoursesPrices = $form_state->getValue('update_courses_prices');
     $useCron = $form_state->getValue('use_cron');
+    $leadsWebforms = $form_state->hasValue('leads_webforms')
+      ? array_values(array_filter($form_state->getValue('leads_webforms')))
+      : [];
 
     $ignoredThemesIds = implode("\n", array_map(function ($id) {
       return trim($id);
@@ -156,6 +179,7 @@ class SettingsForm extends ConfigFormBase {
     $config->set('update_courses_titles', $updateCoursesTitles);
     $config->set('update_courses_prices', $updateCoursesPrices);
     $config->set('use_cron', $useCron);
+    $config->set('leads_webforms', $leadsWebforms);
     $config->save();
 
     parent::submitForm($form, $form_state);

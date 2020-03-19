@@ -32,6 +32,17 @@ function uchi_pro_get_access_token() {
 }
 
 /**
+ * @return ApiClient
+ */
+function uchi_pro_get_api_client() {
+  $url = uchi_pro_get_url();
+  $access_token = uchi_pro_get_access_token();
+  $identity = Identity::createByAccessToken($url, $access_token);
+
+  return ApiClient::create($identity);
+}
+
+/**
  * @param string $url
  * @param string $access_token
  *
@@ -47,4 +58,65 @@ function uchi_pro_check_access_token($url = NULL, $access_token = NULL) {
   if (!in_array($me->role->id, ['manager'])) {
     throw new BadRoleException();
   }
+}
+
+function uchi_pro_form_alter(&$form, &$form_state, $form_id) {
+  if (uchi_pro_webform_necessary_handle($form)) {
+    $form['actions']['submit']['#submit'][] = 'uchi_pro_webform_submit_handler';
+  }
+}
+
+function uchi_pro_webform_submit_handler($form, &$form_state) {
+  try {
+    $values = $form_state->getValues();
+
+    $apiClient = uchi_pro_get_api_client();
+    $leadsApi = $apiClient->leads();
+
+    $lead = new \UchiPro\Leads\Lead();
+    if (!empty($values['name'])) {
+      $lead->contactPerson = $values['name'];
+    }
+    if (!empty($values['email'])) {
+      $lead->email = $values['email'];
+    }
+    if (!empty($values['phone'])) {
+      $lead->phone = $values['phone'];
+    }
+
+    if (!empty($values['course'])) {
+      $node = \Drupal::entityTypeManager()->getStorage('node')->load($values['course']);
+      $courseId = $node->get('field_course_id')->getString();
+      if (!empty($courseId)) {
+        $course = new \UchiPro\Courses\Course();
+        $course->id = $courseId;
+        $lead->courses = [$course];
+      }
+    }
+
+    $leadsApi->save($lead);
+  } catch (Exception $e) {
+    watchdog_exception('uchi_pro', $e);
+  }
+}
+
+/**
+ * @param array $form
+ *
+ * @return bool
+ */
+function uchi_pro_webform_necessary_handle($form)
+{
+  if (!isset($form['#webform_id'])) {
+    return false;
+  }
+  $webformId = $form['#webform_id'];
+
+  if ($form['#form_id'] !== 'webform_submission_' . $webformId . '_add_form') {
+    return false;
+  }
+
+  $settings = Drupal::config(SettingsForm::SETTINGS);
+  $leadWebformsIds = $settings->get('leads_webforms');
+  return is_array($leadWebformsIds) && in_array($webformId, $leadWebformsIds);
 }
