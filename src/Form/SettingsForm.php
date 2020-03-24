@@ -98,7 +98,14 @@ class SettingsForm extends ConfigFormBase {
       $webforms = Drupal::entityTypeManager()->getStorage('webform')->loadMultiple(null);
       $webforms_options = [];
       foreach ($webforms as $webform) {
-        $webforms_options[$webform->id()] = $webform->label();
+        $label = $webform->label();
+        $fields = $this->getWebformFields($webform);
+        if (!empty($fields)) {
+          $label .= ' (используемые поля ' . implode(', ', array_map(function ($field) { return "$field->title ({$field->id})"; }, $fields)) . ')';
+        } else {
+          $label .= ' (нет подходящих полей)';
+        }
+        $webforms_options[$webform->id()] = $label;
       }
       $form['leads']['leads_webforms'] = [
         '#type' => 'checkboxes',
@@ -109,6 +116,31 @@ class SettingsForm extends ConfigFormBase {
     }
 
     return parent::buildForm($form, $form_state);
+  }
+
+  private function getWebformFields($webform)
+  {
+    $fields = [];
+
+    $elements = $webform->getElementsDecodedAndFlattened();
+
+    if (isset($elements['name']) && $elements['name']['#type'] === 'textfield') {
+      $fields[] = (object)['id' => 'name', 'title' => 'имя'];
+    }
+
+    if (isset($elements['email']) && $elements['email']['#type'] === 'email') {
+      $fields[] = (object)['id' => 'email', 'title' => 'e-mail'];
+    }
+
+    if (isset($elements['phone']) && $elements['phone']['#type'] === 'tel') {
+      $fields[] = (object)['id' => 'phone', 'title' => 'телефон'];
+    }
+
+    if (isset($elements['course']) && !empty($elements['course']['#selection_settings']['target_bundles']['course'])) {
+      $fields[] = (object)['id' => 'course', 'title' => 'курс'];
+    }
+
+    return $fields;
   }
 
   public function validateForm(array &$form, FormStateInterface $form_state)
