@@ -48,7 +48,7 @@ function uchi_pro_get_api_client() {
  *
  * @throws BadRoleException
  */
-function uchi_pro_check_access_token($url = NULL, $access_token = NULL) {
+function _uchi_pro_check_access_token($url, $access_token) {
   $identity = Identity::createByAccessToken($url, $access_token);
 
   $apiClient = ApiClient::create($identity);
@@ -58,6 +58,22 @@ function uchi_pro_check_access_token($url = NULL, $access_token = NULL) {
   if (!in_array($me->role->id, ['manager'])) {
     throw new BadRoleException();
   }
+}
+
+/**
+ * @param $url
+ * @param $accessToken
+ *
+ * @return bool
+ */
+function _uchi_pro_leads_available($url, $accessToken) {
+  $identity = Identity::createByAccessToken($url, $accessToken);
+  $apiClient = ApiClient::create($identity);
+  $usersApi = $apiClient->users();
+  $vendorsApi = $apiClient->vendors();
+  $me = $usersApi->getMe();
+  $limits = $vendorsApi->getVendorLimits($me->vendor);
+  return $limits->leadsEventsAvailable;
 }
 
 function uchi_pro_form_alter(&$form, &$form_state, $form_id) {
@@ -79,6 +95,12 @@ function uchi_pro_webform_submit_handler($form, &$form_state) {
     }
     if (!empty($values['email'])) {
       $lead->email = $values['email'];
+
+      $usersApi = $apiClient->users();
+      $contractor = $usersApi->findContractorByEmail($lead->email);
+      if (!empty($contractor)) {
+        $lead->contractor = $contractor;
+      }
     }
     if (!empty($values['phone'])) {
       $lead->phone = $values['phone'];

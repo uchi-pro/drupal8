@@ -88,14 +88,14 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => true,
     ];
 
-    $moduleHandler = \Drupal::service('module_handler');
-    if ($moduleHandler->moduleExists('webform')) {
+    $moduleHandler = Drupal::service('module_handler');
+    if ($moduleHandler->moduleExists('webform') && $config->get('leads_available')) {
       $form['leads'] = [
         '#type' => 'fieldset',
         '#title' => 'Создание лидов',
       ];
 
-      $webforms = \Drupal::entityTypeManager()->getStorage('webform')->loadMultiple(null);
+      $webforms = Drupal::entityTypeManager()->getStorage('webform')->loadMultiple(null);
       $webforms_options = [];
       foreach ($webforms as $webform) {
         $webforms_options[$webform->id()] = $webform->label();
@@ -141,7 +141,7 @@ class SettingsForm extends ConfigFormBase {
     }
 
     try {
-      uchi_pro_check_access_token($url, $accessToken);
+      _uchi_pro_check_access_token($url, $accessToken);
     } catch (BadRoleException $e) {
       $form_state->setErrorByName('url', Markup::create("Укажите актуальный токен для доступа менеджера со страницы <a href=\"{$url}/vendor/properties#other\" target=\"_blank\">настроек вендора</a>."));
     } catch (Exception $e) {
@@ -171,6 +171,11 @@ class SettingsForm extends ConfigFormBase {
       $useCron = 0;
     }
 
+    $leadsAvailable = false;
+    if (!empty($accessToken)) {
+      $leadsAvailable = _uchi_pro_leads_available($url, $accessToken);
+    }
+
     $config = $this->configFactory->getEditable(static::SETTINGS);
     $config->set('url', $url);
     $config->set('access_token', $accessToken);
@@ -179,6 +184,7 @@ class SettingsForm extends ConfigFormBase {
     $config->set('update_courses_titles', $updateCoursesTitles);
     $config->set('update_courses_prices', $updateCoursesPrices);
     $config->set('use_cron', $useCron);
+    $config->set('leads_available', $leadsAvailable);
     $config->set('leads_webforms', $leadsWebforms);
     $config->save();
 

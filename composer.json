@@ -2,6 +2,6 @@
     "name": "drupal/uchi_pro",
     "type": "drupal-module",
     "require": {
-        "uchi-pro/api-client": "^1.2"
+        "uchi-pro/api-client": "^1.2.11"
     }
 }
