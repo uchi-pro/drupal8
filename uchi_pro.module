@@ -77,21 +77,24 @@ function _uchi_pro_leads_available($url, $accessToken) {
 }
 
 function uchi_pro_form_alter(&$form, &$form_state, $form_id) {
-  if (uchi_pro_webform_necessary_handle($form)) {
-    $form['actions']['submit']['#submit'][] = 'uchi_pro_webform_submit_handler';
+  if (_uchi_pro_webform_necessary_handle($form)) {
+    $form['actions']['submit']['#submit'][] = '_uchi_pro_webform_submit_handler';
   }
 }
 
-function uchi_pro_webform_submit_handler($form, &$form_state) {
+function _uchi_pro_webform_submit_handler($form, &$form_state) {
   try {
     $values = $form_state->getValues();
+    $restValues = $values;
 
     $apiClient = uchi_pro_get_api_client();
     $leadsApi = $apiClient->leads();
+    $coursesApi = $apiClient->courses();
 
-    $lead = new \UchiPro\Leads\Lead();
+    $lead = $leadsApi->createLead();
     if (!empty($values['name'])) {
       $lead->contactPerson = $values['name'];
+      unset($restValues['name']);
     }
     if (!empty($values['email'])) {
       $lead->email = $values['email'];
@@ -101,22 +104,37 @@ function uchi_pro_webform_submit_handler($form, &$form_state) {
       if (!empty($contractor)) {
         $lead->contractor = $contractor;
       }
+      unset($restValues['email']);
     }
     if (!empty($values['phone'])) {
       $lead->phone = $values['phone'];
+      unset($restValues['phone']);
     }
-
-    if (!empty($values['course'])) {
+    if (!empty($values['course']) && !empty($form['elements']['course']['#selection_settings']['target_bundles']['course'])) {
       $node = \Drupal::entityTypeManager()->getStorage('node')->load($values['course']);
       $courseId = $node->get('field_course_id')->getString();
       if (!empty($courseId)) {
-        $course = new \UchiPro\Courses\Course();
-        $course->id = $courseId;
+        $course = $coursesApi->createCourse($courseId);
         $lead->courses = [$course];
       }
+      unset($restValues['course']);
     }
 
-    $leadsApi->save($lead);
+    $comment = null;
+    $commentLines = null;
+    foreach ($restValues as $key => $value) {
+      if (empty($value)) {
+        continue;
+      }
+      if (in_array($form['elements'][$key]['#type'], ['textfield', 'textarea'])) {
+        $commentLines[] = "{$form['elements'][$key]['#title']}: {$value}";
+      }
+    }
+    if (!empty($commentLines)) {
+      $comment = $leadsApi->createComment(null, implode("\n\n", $commentLines));
+    }
+
+    $leadsApi->save($lead, $comment);
   } catch (Exception $e) {
     watchdog_exception('uchi_pro', $e);
   }
@@ -127,7 +145,7 @@ function uchi_pro_webform_submit_handler($form, &$form_state) {
  *
  * @return bool
  */
-function uchi_pro_webform_necessary_handle($form)
+function _uchi_pro_webform_necessary_handle($form)
 {
   if (!isset($form['#webform_id'])) {
     return false;
