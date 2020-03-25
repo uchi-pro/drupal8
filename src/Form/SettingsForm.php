@@ -98,10 +98,10 @@ class SettingsForm extends ConfigFormBase {
       $webforms = Drupal::entityTypeManager()->getStorage('webform')->loadMultiple(null);
       $webforms_options = [];
       foreach ($webforms as $webform) {
-        $label = $webform->label();
+        $label = $webform->toLink(NULL, 'canonical', ['attributes' => ['target' => '_blank']])->toString();
         $fields = $this->getWebformFields($webform);
         if (!empty($fields)) {
-          $label .= ' (используемые поля ' . implode(', ', array_map(function ($field) { return "$field->title ({$field->id})"; }, $fields)) . ')';
+          $label .= ' (используемые поля: ' . implode(', ', array_map(function ($field) { return "$field->title ({$field->id})"; }, $fields)) . ')';
         } else {
           $label .= ' (нет подходящих полей)';
         }
