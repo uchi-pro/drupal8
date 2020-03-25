@@ -126,7 +126,7 @@ function _uchi_pro_webform_submit_handler($form, &$form_state) {
       if (empty($value)) {
         continue;
       }
-      if (in_array($form['elements'][$key]['#type'], ['textfield', 'textarea'])) {
+      if (isset($form['elements'][$key]['#type']) && in_array($form['elements'][$key]['#type'], ['textfield', 'textarea'])) {
         $commentLines[] = "{$form['elements'][$key]['#title']}: {$value}";
       }
     }
