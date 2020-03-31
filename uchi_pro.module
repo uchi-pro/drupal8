@@ -1,5 +1,6 @@
 <?php
 
+use Drupal\Core\Render\Element;
 use Drupal\uchi_pro\Exception\BadRoleException;
 use Drupal\uchi_pro\Form\SettingsForm;
 use Drupal\uchi_pro\Service\ImportCoursesService;
@@ -120,15 +121,43 @@ function _uchi_pro_webform_submit_handler($form, &$form_state) {
       unset($restValues['course']);
     }
 
+    $findElementInForm = function ($elementKey, $form) use (&$findElementInForm) {
+      if (!is_array($form)) {
+        return null;
+      }
+
+      foreach (Element::children($form) as $key) {
+        $element = $form[$key];
+
+        if ($elementKey === $key) {
+          return $element;
+        }
+
+        $foundElement = $findElementInForm($elementKey, $element);
+        if (!empty($foundElement)) {
+          return $foundElement;
+        }
+      }
+      return null;
+    };
+
     $comment = null;
     $commentLines = null;
     foreach ($restValues as $key => $value) {
       if (empty($value)) {
         continue;
       }
-      if (isset($form['elements'][$key]['#type']) && in_array($form['elements'][$key]['#type'], ['textfield', 'textarea'])) {
-        $commentLines[] = "{$form['elements'][$key]['#title']}: {$value}";
+
+      $element = $findElementInForm($key, $form);
+      if (empty($element)) {
+        continue;
       }
+
+      if (!isset($element['#type']) || !in_array($element['#type'], ['textfield', 'textarea'])) {
+        continue;
+      }
+
+      $commentLines[] = "{$element['#title']}: {$value}";
     }
     if (!empty($commentLines)) {
       $comment = $leadsApi->createComment(null, implode("\n\n", $commentLines));
