@@ -6,6 +6,7 @@ use Drupal;
 use Drupal\Core\Render\Markup;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
+use Drupal\uchi_pro\Exception\ImportException;
 use Drupal\uchi_pro\Form\SettingsForm;
 use Exception;
 use UchiPro\ApiClient;
@@ -16,12 +17,12 @@ use UchiPro\Identity;
 class ImportCoursesService
 {
   /**
-   * @throws Exception
+   * @throws ImportException
    */
   public function importCourses()
   {
     if (!$this->settingsExists()) {
-      throw new Exception('Не заполнены настройки для импорта курсов.');
+      throw new ImportException('Не заполнены настройки для импорта курсов.');
     }
 
     try {
@@ -36,7 +37,7 @@ class ImportCoursesService
       while ($exception = $exception->getPrevious()) {
         watchdog_exception('error', $exception);
       }
-      throw new Exception('Не удалось импортировать курсы.', 0, $lastException);
+      throw new ImportException('Не удалось импортировать курсы.', 0, $lastException);
     }
   }
 
@@ -74,6 +75,9 @@ class ImportCoursesService
     return $apiClient->courses()->findBy();
   }
 
+  /**
+   * @return NodeInterface[]
+   */
   protected function getTypesNodes()
   {
     $nids = Drupal::entityQuery('node')->condition('type','training_type')->execute();
@@ -129,8 +133,6 @@ class ImportCoursesService
    * @param array|ApiCourse[] $apiCourses
    *
    * @return array|Node[]
-   *
-   * @throws Exception
    */
   protected function updateTypes(array $apiCourses)
   {
@@ -165,26 +167,16 @@ class ImportCoursesService
    * @param array|ApiCourse[] $apiCourses
    *
    * @return array|Node[]
-   *
-   * @throws Exception
    */
   protected function updateThemes(array $apiCourses)
   {
-    $themesNodes = $this->getThemesNodes();
+    static $themesNodes;
 
-    $settings = $this->getSettings();
-    $ignoredThemesIds = explode("\n", $settings->get('ignored_themes_ids'));
+    if (empty($themesNodes)) {
+      $themesNodes = $this->getThemesNodes();
+    }
 
-    foreach ($apiCourses as $apiCourse) {
-      $isTheme = $apiCourse->depth === 0 && $apiCourse->lessonsCount === 0 && $apiCourse->childrenCount > 0;
-      if (!$isTheme) {
-        continue;
-      }
-      if (in_array($apiCourse->id, $ignoredThemesIds)) {
-        $this->warning("Направление <a href=\"{$this->getApiCourseUrl($apiCourse)}\" target='_blank'>{$apiCourse->title}</a> пропущено согласно настройкам интеграции.");
-        continue;
-      }
-
+    foreach ($this->getThemes($apiCourses) as $apiCourse) {
       if (isset($themesNodes[$apiCourse->id])) {
         $node = $themesNodes[$apiCourse->id];
       } else {
@@ -193,6 +185,10 @@ class ImportCoursesService
           'title' => mb_substr($apiCourse->title, 0, 250),
           'field_theme_id' => ['value' => $apiCourse->id],
         ]);
+      }
+
+      if (isset($themesNodes[$apiCourse->parentId])) {
+        $node->set('field_theme_parent', ['target_id' => $themesNodes[$apiCourse->parentId]->id()]);
       }
 
       $node->save();
@@ -205,10 +201,49 @@ class ImportCoursesService
 
   /**
    * @param array|ApiCourse[] $apiCourses
+   * @param null $parentId
+   *
+   * @return array
+   */
+  private function getThemes(array $apiCourses, $parentId = null)
+  {
+    $themes = [];
+
+    $ignoredThemesIds = $this->getIgnoredThemesIds();
+
+    foreach ($apiCourses as $apiCourse) {
+      $isTheme = $apiCourse->parentId === $parentId && $apiCourse->lessonsCount === 0 && $apiCourse->childrenCount > 0;
+      if (!$isTheme) {
+        continue;
+      }
+      $isIgnoredTheme = in_array($apiCourse->id, $ignoredThemesIds);
+      if ($isIgnoredTheme) {
+        $this->warning("Направление <a href=\"{$this->getApiCourseUrl($apiCourse)}\" target='_blank'>{$apiCourse->title}</a> пропущено согласно настройкам интеграции.");
+        continue;
+      }
+
+      $themes[] = $apiCourse;
+      foreach ($this->getThemes($apiCourses, $apiCourse->id) as $theme) {
+        $themes[] = $theme;
+      }
+    }
+
+    return $themes;
+  }
+
+  /**
+   * @return false|string[]
+   */
+  private function getIgnoredThemesIds()
+  {
+    $settings = $this->getSettings();
+    return explode("\n", $settings->get('ignored_themes_ids'));
+  }
+
+  /**
+   * @param array|ApiCourse[] $apiCourses
    *
    * @return array|Node[]
-   *
-   * @throws Exception
    */
   protected function updateCourses(array $apiCourses)
   {
@@ -255,7 +290,7 @@ class ImportCoursesService
       if (isset($coursesNodesByIds[$apiCourse->id])) {
         $courseNode = $coursesNodesByIds[$apiCourse->id];
         unset($coursesForUnpublishIds[array_search($apiCourse->id, $coursesForUnpublishIds)]);
-      };
+      }
       $isNew = empty($courseNode);
       $needSave = FALSE;
 
@@ -298,19 +333,15 @@ class ImportCoursesService
         }
       }
 
-      if ($needUpdateCoursesTitles) {
-        if ($apiCourse->title != $previousApiCourse->title) {
-          $needSave = true;
-          $courseNode->set('title', $shortTitle);
-          $courseNode->set('field_course_title', $apiCourse->title);
-        }
+      if ($needUpdateCoursesTitles && ($apiCourse->title != $previousApiCourse->title)) {
+        $needSave = true;
+        $courseNode->set('title', $shortTitle);
+        $courseNode->set('field_course_title', $apiCourse->title);
       }
 
-      if ($needUpdateCoursesPrices) {
-        if ($apiCourse->price != $previousApiCourse->price) {
-          $needSave = true;
-          $courseNode->set('field_course_price', ['value' => $apiCourse->price]);
-        }
+      if ($needUpdateCoursesPrices && ($apiCourse->price != $previousApiCourse->price)) {
+        $needSave = true;
+        $courseNode->set('field_course_price', ['value' => $apiCourse->price]);
       }
 
       if ($apiCourse->hours != $previousApiCourse->hours) {
