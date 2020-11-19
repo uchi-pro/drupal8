@@ -44,12 +44,14 @@ function uchi_pro_get_api_client() {
 }
 
 /**
+ * Проверяет работоспособность токена доступа к СДО.
+ *
  * @param string $url
  * @param string $access_token
  *
  * @throws BadRoleException
  */
-function _uchi_pro_check_access_token($url, $access_token) {
+function uchi_pro_check_access_token($url, $access_token) {
   $identity = Identity::createByAccessToken($url, $access_token);
 
   $apiClient = ApiClient::create($identity);

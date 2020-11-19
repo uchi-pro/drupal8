@@ -173,7 +173,7 @@ class SettingsForm extends ConfigFormBase {
     }
 
     try {
-      _uchi_pro_check_access_token($url, $accessToken);
+      uchi_pro_check_access_token($url, $accessToken);
     } catch (BadRoleException $e) {
       $form_state->setErrorByName('url', Markup::create("Укажите актуальный токен для доступа менеджера со страницы <a href=\"{$url}/vendor/properties#other\" target=\"_blank\">настроек вендора</a>."));
     } catch (Exception $e) {
