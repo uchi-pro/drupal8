@@ -86,8 +86,8 @@ class ImportCoursesService
     $nodesByIds = [];
 
     foreach ($nodes as $node) {
-      $themeId = $node->get('field_training_type_id')->getString();
-      $nodesByIds[$themeId] = $node;
+      $trainingTypeId = $node->get('field_training_type_id')->getString();
+      $nodesByIds[$trainingTypeId] = $node;
     }
 
     return $nodesByIds;
