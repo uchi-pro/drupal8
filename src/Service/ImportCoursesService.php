@@ -28,7 +28,9 @@ class ImportCoursesService
     try {
       $apiCourses = $this->fetchApiCourses();
 
-      $this->updateTypes($apiCourses);
+      if ($this->needImportTypes()) {
+        $this->updateTypes($apiCourses);
+      }
       $this->updateThemes($apiCourses);
       $this->updateCourses($apiCourses);
     } catch (Exception $exception) {
@@ -253,6 +255,7 @@ class ImportCoursesService
     $needPublishCoursesOnImport = $settings->get('publish_courses_on_import');
     $needUpdateCoursesTitles = $settings->get('update_courses_titles');
     $needUpdateCoursesPrices = $settings->get('update_courses_prices');
+    $needImportTypes = $this->needImportTypes();
 
     $coursesNodesByIds = $this->getCoursesNodes();
     $themesNodesByIds = $this->getThemesNodes();
@@ -318,18 +321,20 @@ class ImportCoursesService
         ]);
       }
 
-      $typeAppeared = empty($previousApiCourse->type->id) && !empty($apiCourse->type->id);
-      $typeFaded = !empty($previousApiCourse->type->id) && empty($apiCourse->type->id);
-      $typesChanged = !empty($previousApiCourse->type->id) && !empty($apiCourse->type->id) && ($previousApiCourse->type->id != $apiCourse->type->id);
-      if ($typeAppeared || $typeFaded || $typesChanged) {
-        $needSave = true;
-        if ($typeFaded) {
-          $courseNode->set('field_course_type', null);
-        } else {
-          $courseType = $typesNodesByIds[$apiCourse->type->id];
-          $courseNode->set('field_course_training_type', [
-            'entity' => $courseType,
-          ]);
+      if ($needImportTypes) {
+        $typeAppeared = empty($previousApiCourse->type->id) && !empty($apiCourse->type->id);
+        $typeFaded = !empty($previousApiCourse->type->id) && empty($apiCourse->type->id);
+        $typesChanged = !empty($previousApiCourse->type->id) && !empty($apiCourse->type->id) && ($previousApiCourse->type->id != $apiCourse->type->id);
+        if ($typeAppeared || $typeFaded || $typesChanged) {
+          $needSave = true;
+          if ($typeFaded) {
+            $courseNode->set('field_course_type', null);
+          } else {
+            $courseType = $typesNodesByIds[$apiCourse->type->id];
+            $courseNode->set('field_course_training_type', [
+              'entity' => $courseType,
+            ]);
+          }
         }
       }
 
@@ -451,5 +456,17 @@ class ImportCoursesService
     }
 
     return !empty($plan) ? serialize($plan) : null;
+  }
+
+  /**
+   * @return bool
+   */
+  private function needImportTypes()
+  {
+    $needImportTypes = $this->getSettings()->get('import_types');
+    if (is_null($needImportTypes)) {
+      $needImportTypes = true;
+    }
+    return $needImportTypes;
   }
 }

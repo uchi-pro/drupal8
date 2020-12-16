@@ -76,6 +76,12 @@ class SettingsForm extends ConfigFormBase {
       '#default_value' => $config->get('update_courses_prices'),
     ];
 
+    $form['import_courses']['import_types'] = [
+      '#type' => 'checkbox',
+      '#title' => 'Импортировать типы обучения',
+      '#default_value' => $config->get('import_types'),
+    ];
+
     $form['import_courses']['use_cron'] = [
       '#type' => 'checkbox',
       '#title' => 'Запускать импорт курсов по крону',
@@ -190,6 +196,7 @@ class SettingsForm extends ConfigFormBase {
     $publishCoursesOnImport = $form_state->getValue('publish_courses_on_import');
     $updateCoursesTitles = $form_state->getValue('update_courses_titles');
     $updateCoursesPrices = $form_state->getValue('update_courses_prices');
+    $importTypes = $form_state->getValue('import_types');
     $useCron = $form_state->getValue('use_cron');
     $leadsWebforms = $form_state->hasValue('leads_webforms')
       ? array_values(array_filter($form_state->getValue('leads_webforms')))
@@ -215,6 +222,7 @@ class SettingsForm extends ConfigFormBase {
     $config->set('publish_courses_on_import', $publishCoursesOnImport);
     $config->set('update_courses_titles', $updateCoursesTitles);
     $config->set('update_courses_prices', $updateCoursesPrices);
+    $config->set('import_types', $importTypes);
     $config->set('use_cron', $useCron);
     $config->set('leads_available', $leadsAvailable);
     $config->set('leads_webforms', $leadsWebforms);
