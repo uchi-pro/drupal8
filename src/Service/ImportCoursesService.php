@@ -304,7 +304,7 @@ class ImportCoursesService
           'title' => $shortTitle,
           'field_course_title' => ['value' => $apiCourse->title],
           'field_course_id' => ['value' => $apiCourse->id],
-          'field_course_price' => ['value' => $apiCourse->price],
+          'field_course_price' => ['value' => $apiCourse->price ?? 0],
         ]);
       }
 
