@@ -295,6 +295,7 @@ class ImportCoursesService
       $previousApiCourse = $courseNode ? $this->createApiCourseByNode($courseNode) : new ApiCourse();
 
       $shortTitle = mb_substr($apiCourse->title, 0, 250);
+      $price = $apiCourse->price ?? 0;
 
       if (!$courseNode) {
         $needSave = true;
@@ -304,7 +305,7 @@ class ImportCoursesService
           'title' => $shortTitle,
           'field_course_title' => ['value' => $apiCourse->title],
           'field_course_id' => ['value' => $apiCourse->id],
-          'field_course_price' => ['value' => $apiCourse->price ?? 0],
+          'field_course_price' => ['value' => $price],
         ]);
       }
 
@@ -339,7 +340,7 @@ class ImportCoursesService
         $courseNode->set('field_course_title', $apiCourse->title);
       }
 
-      if ($needUpdateCoursesPrices && ($apiCourse->price != $previousApiCourse->price)) {
+      if ($needUpdateCoursesPrices && ($price != $previousApiCourse->price)) {
         $needSave = true;
         $courseNode->set('field_course_price', ['value' => $apiCourse->price]);
       }
