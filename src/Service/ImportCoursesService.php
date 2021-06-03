@@ -107,7 +107,9 @@ class ImportCoursesService
 
     foreach ($nodes as $node) {
       $themeId = $node->get('field_theme_id')->getString();
-      $nodesByIds[$themeId] = $node;
+      if (!empty($themeId)) {
+        $nodesByIds[$themeId] = $node;
+      }
     }
 
     return $nodesByIds;
@@ -191,6 +193,8 @@ class ImportCoursesService
 
       if (isset($themesNodes[$apiCourse->parentId])) {
         $node->set('field_theme_parent', ['target_id' => $themesNodes[$apiCourse->parentId]->id()]);
+      } else {
+        $node->get('field_theme_parent')->setValue([]);
       }
 
       $node->save();
