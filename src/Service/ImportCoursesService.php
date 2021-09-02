@@ -328,7 +328,7 @@ class ImportCoursesService
         if ($typeAppeared || $typeFaded || $typesChanged) {
           $needSave = true;
           if ($typeFaded) {
-            $courseNode->set('field_course_type', null);
+            $courseNode->set('field_course_training_type', null);
           } else {
             $courseType = $typesNodesByIds[$apiCourse->type->id];
             $courseNode->set('field_course_training_type', [
