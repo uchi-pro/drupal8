@@ -2,5 +2,5 @@ name: Uchi.pro
 type: module
 description: Интеграция с СДО Uchi.pro.
 package: Uchi.pro
-core: 8.x
-version: 1.0.22
+core_version_requirement: ^8.8 || ^9
+version: 1.1
