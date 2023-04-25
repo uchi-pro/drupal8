@@ -268,6 +268,10 @@ class ImportCoursesService
     $coursesForUnpublishIds = array_keys($coursesNodesByIds);
 
     $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds, $ignoredThemesIds) {
+      $isTheme = isset($themesNodesByIds[$apiCourse->id]);
+      if ($isTheme) {
+        return FALSE;
+      }
       $isParentTheme = isset($themesNodesByIds[$apiCourse->parentId]);
       if (!$isParentTheme) {
         return FALSE;
