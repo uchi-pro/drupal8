@@ -1,0 +1,57 @@
+<?php
+
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
+
+function uchi_pro_update_9010() {
+  create_course_fix_theme_field();
+}
+
+function create_course_fix_theme_field() {
+  $bundles = ['course'];
+
+  $fields['field_course_fix_theme'] = [
+    'type' => 'boolean',
+    'entity_type' => 'node',
+    'bundle' => 'course',
+    'label' => 'Не изменять направление при импорте из СДО',
+    'required' => FALSE,
+    'settings' => [
+      'on_label' => 'Да',
+      'off_label' => 'Нет',
+    ],
+  ];
+
+  foreach ($fields as $field_name => $config) {
+    $field_storage = FieldStorageConfig::loadByName($config['entity_type'], $field_name);
+    if (empty($field_storage)) {
+      FieldStorageConfig::create(array(
+        'field_name' => $field_name,
+        'entity_type' => $config['entity_type'],
+        'type' => $config['type'],
+        'locked' => TRUE,
+      ))->save();
+    }
+  }
+
+  foreach ($bundles as $bundle) {
+    foreach ($fields as $field_name => $config) {
+      $config_array = array(
+        'field_name' => $field_name,
+        'entity_type' => $config['entity_type'],
+        'bundle' => $bundle,
+        'label' => $config['label'],
+        'required' => $config['required'],
+      );
+    }
+
+    if (isset($config['settings'])) {
+      $config_array['settings'] = $config['settings'];
+    }
+
+    $field = FieldConfig::loadByName($config['entity_type'], $bundle, $field_name);
+    if (empty($field) && $bundle !== "" && !empty($bundle)) {
+      FieldConfig::create($config_array)->save();
+    }
+  }
+}

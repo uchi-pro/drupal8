@@ -1,0 +1,22 @@
+langcode: ru
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_course_fix_theme
+    - node.type.course
+id: node.course.field_course_fix_theme
+field_name: field_course_fix_theme
+entity_type: node
+bundle: course
+label: 'Зафиксировать направление'
+description: 'Запретить изменять направление обучения курса при импорте курсов из СДО.'
+required: false
+translatable: false
+default_value:
+  -
+    value: 0
+default_value_callback: ''
+settings:
+  on_label: Да
+  off_label: Нет
+field_type: boolean

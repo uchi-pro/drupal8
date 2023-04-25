@@ -314,11 +314,14 @@ class ImportCoursesService
       }
 
       if ($apiCourse->parentId != $previousApiCourse->parentId) {
-        $needSave = true;
-        $courseTheme = $themesNodesByIds[$apiCourse->parentId];
-        $courseNode->set('field_course_theme', [
-          'entity' => $courseTheme,
-        ]);
+        $fixTheme = (bool)$courseNode->get('field_course_fix_theme')->getString();
+        if (!$fixTheme) {
+          $needSave = true;
+          $courseTheme = $themesNodesByIds[$apiCourse->parentId];
+          $courseNode->set('field_course_theme', [
+            'entity' => $courseTheme,
+          ]);
+        }
       }
 
       if ($needImportTypes) {
