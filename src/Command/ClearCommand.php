@@ -23,7 +23,7 @@ class ClearCommand extends Command {
    */
   protected function execute(InputInterface $input, OutputInterface $output) {
     $helper = $this->getHelper('question');
-    $question = new ConfirmationQuestion('Действительно хотите удалить все курсы, направления и типы обучения? (y/n) ', false);
+    $question = new ConfirmationQuestion('Действительно хотите удалить все курсы, направления и типы обучения? (y/N) ', false);
 
     if (!$helper->ask($input, $output, $question)) {
       $output->writeln('Операция отменена.');

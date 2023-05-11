@@ -5,7 +5,6 @@ namespace Drupal\uchi_pro\Service;
 use Drupal;
 use Drupal\Core\Render\Markup;
 use Drupal\node\Entity\Node;
-use Drupal\node\NodeInterface;
 use Drupal\uchi_pro\Exception\ImportException;
 use Drupal\uchi_pro\Form\SettingsForm;
 use Exception;
@@ -31,8 +30,8 @@ class ImportCoursesService
       if ($this->needImportTypes()) {
         $this->updateTypes($apiCourses);
       }
-      $this->updateThemes($apiCourses);
-      $this->updateCourses($apiCourses);
+      $importedThemesNodesByUuids = $this->updateThemes($apiCourses);
+      $this->updateCourses($apiCourses, $importedThemesNodesByUuids);
     } catch (Exception $exception) {
       $lastException = $exception;
       watchdog_exception('error', $exception);
@@ -78,9 +77,9 @@ class ImportCoursesService
   }
 
   /**
-   * @return NodeInterface[]
+   * @return Node[]
    */
-  protected function getTypesNodes()
+  protected function getTypesNodes(): array
   {
     $nids = Drupal::entityQuery('node')->condition('type','training_type')->execute();
     $nodes = Node::loadMultiple($nids);
@@ -96,9 +95,9 @@ class ImportCoursesService
   }
 
   /**
-   * @return NodeInterface[]
+   * @return Node[]
    */
-  protected function getThemesNodes()
+  protected function getThemesNodesByUuids(): array
   {
     $nids = Drupal::entityQuery('node')->condition('type','theme')->execute();
     $nodes = Node::loadMultiple($nids);
@@ -116,9 +115,9 @@ class ImportCoursesService
   }
 
   /**
-   * @return NodeInterface[]
+   * @return Node[]
    */
-  protected function getCoursesNodes()
+  protected function getCoursesNodesByUuids(): array
   {
     $nids = Drupal::entityQuery('node')->condition('type','course')->execute();
     $nodes = Node::loadMultiple($nids);
@@ -172,17 +171,15 @@ class ImportCoursesService
    *
    * @return array|Node[]
    */
-  protected function updateThemes(array $apiCourses)
+  protected function updateThemes(array $apiCourses): array
   {
-    static $themesNodes;
-
-    if (empty($themesNodes)) {
-      $themesNodes = $this->getThemesNodes();
-    }
+    $themesNodesByUuids = $this->getThemesNodesByUuids();
+    $themesForIgnore = array_keys($themesNodesByUuids);
 
     foreach ($this->getThemes($apiCourses) as $apiCourse) {
-      if (isset($themesNodes[$apiCourse->id])) {
-        $node = $themesNodes[$apiCourse->id];
+      if (isset($themesNodesByUuids[$apiCourse->id])) {
+        $node = $themesNodesByUuids[$apiCourse->id];
+        unset($themesForIgnore[array_search($apiCourse->id, $themesForIgnore)]);
       } else {
         $node = Node::create([
           'type' => 'theme',
@@ -191,18 +188,22 @@ class ImportCoursesService
         ]);
       }
 
-      if (isset($themesNodes[$apiCourse->parentId])) {
-        $node->set('field_theme_parent', ['target_id' => $themesNodes[$apiCourse->parentId]->id()]);
+      if (isset($themesNodesByUuids[$apiCourse->parentId])) {
+        $node->set('field_theme_parent', ['target_id' => $themesNodesByUuids[$apiCourse->parentId]->id()]);
       } else {
         $node->get('field_theme_parent')->setValue([]);
       }
 
       $node->save();
 
-      $themesNodes[$apiCourse->id] = $node;
+      $themesNodesByUuids[$apiCourse->id] = $node;
     }
 
-    return $themesNodes;
+    foreach ($themesForIgnore as $uuid) {
+      unset($themesNodesByUuids[$uuid]);
+    }
+
+    return $themesNodesByUuids;
   }
 
   /**
@@ -217,6 +218,10 @@ class ImportCoursesService
 
     $ignoredThemesIds = $this->getIgnoredThemesIds();
 
+    $ignoredServiceThemesIds = [
+      'a74d99dd-b941-404d-ba1b-6eb40cc4dc61', // Конструктор курсов
+    ];
+
     foreach ($apiCourses as $apiCourse) {
       $isTheme = $apiCourse->parentId === $parentId && $apiCourse->lessonsCount === 0 && $apiCourse->childrenCount > 0;
       if (!$isTheme) {
@@ -225,6 +230,10 @@ class ImportCoursesService
       $isIgnoredTheme = in_array($apiCourse->id, $ignoredThemesIds);
       if ($isIgnoredTheme) {
         $this->warning("Направление <a href=\"{$this->getApiCourseUrl($apiCourse)}\" target='_blank'>{$apiCourse->title}</a> пропущено согласно настройкам интеграции.");
+        continue;
+      }
+      $isIgnoredServiceTheme = in_array($apiCourse->id, $ignoredServiceThemesIds);
+      if ($isIgnoredServiceTheme) {
         continue;
       }
 
@@ -248,35 +257,32 @@ class ImportCoursesService
 
   /**
    * @param array|ApiCourse[] $apiCourses
+   * @param array|Node[] $importedThemesNodesByUuids
    *
    * @return array|Node[]
    */
-  protected function updateCourses(array $apiCourses)
+  protected function updateCourses(array $apiCourses, array $importedThemesNodesByUuids): array
   {
     $settings = $this->getSettings();
-    $ignoredThemesIds = explode("\n", $settings->get('ignored_themes_ids'));
 
     $needPublishCoursesOnImport = $settings->get('publish_courses_on_import');
     $needUpdateCoursesTitles = $settings->get('update_courses_titles');
     $needUpdateCoursesPrices = $settings->get('update_courses_prices');
     $needImportTypes = $this->needImportTypes();
 
-    $coursesNodesByIds = $this->getCoursesNodes();
-    $themesNodesByIds = $this->getThemesNodes();
+    $coursesNodesByUuids = $this->getCoursesNodesByUuids();
+    $allThemesNodesByUuids = $this->getThemesNodesByUuids();
     $typesNodesByIds = $this->getTypesNodes();
 
-    $coursesForUnpublishIds = array_keys($coursesNodesByIds);
+    $coursesForUnpublishUuids = array_keys($coursesNodesByUuids);
 
-    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($themesNodesByIds, $ignoredThemesIds) {
-      $isTheme = isset($themesNodesByIds[$apiCourse->id]);
+    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($allThemesNodesByUuids, $importedThemesNodesByUuids) {
+      $isTheme = isset($allThemesNodesByUuids[$apiCourse->id]);
       if ($isTheme) {
         return FALSE;
       }
-      $isParentTheme = isset($themesNodesByIds[$apiCourse->parentId]);
-      if (!$isParentTheme) {
-        return FALSE;
-      }
-      if (in_array($apiCourse->parentId, $ignoredThemesIds)) {
+      $isParentThemeExists = isset($importedThemesNodesByUuids[$apiCourse->parentId]);
+      if (!$isParentThemeExists) {
         return FALSE;
       }
       $hasLessons = $apiCourse->lessonsCount > 0;
@@ -293,9 +299,9 @@ class ImportCoursesService
       $apiCourse->title = mb_substr($apiCourse->title, 0, 2000);
 
       $courseNode = null;
-      if (isset($coursesNodesByIds[$apiCourse->id])) {
-        $courseNode = $coursesNodesByIds[$apiCourse->id];
-        unset($coursesForUnpublishIds[array_search($apiCourse->id, $coursesForUnpublishIds)]);
+      if (isset($coursesNodesByUuids[$apiCourse->id])) {
+        $courseNode = $coursesNodesByUuids[$apiCourse->id];
+        unset($coursesForUnpublishUuids[array_search($apiCourse->id, $coursesForUnpublishUuids)]);
       }
       $isNew = empty($courseNode);
       $needSave = FALSE;
@@ -321,7 +327,7 @@ class ImportCoursesService
         $fixTheme = (bool)$courseNode->get('field_course_fix_theme')->getString();
         if (!$fixTheme) {
           $needSave = true;
-          $courseTheme = $themesNodesByIds[$apiCourse->parentId];
+          $courseTheme = $importedThemesNodesByUuids[$apiCourse->parentId];
           $courseNode->set('field_course_theme', [
             'entity' => $courseTheme,
           ]);
@@ -372,17 +378,16 @@ class ImportCoursesService
         $updatedCount++;
 
         $courseNode->save();
-        $coursesNodesByIds[$apiCourse->id] = $courseNode;
 
         $this->status("Курс <a href=\"/node/{$courseNode->id()}/edit\" target=\"_blank\">{$courseNode->get('field_course_title')->getString()}</a> " . ($isNew ? ' импортирован' : 'обновлен') . '.');
       }
 
-      $coursesNodesByIds[$apiCourse->id] = $courseNode;
+      $coursesNodesByUuids[$apiCourse->id] = $courseNode;
     }
 
     $unpublishedCount = 0;
-    foreach ($coursesForUnpublishIds as $courseId) {
-      $courseNode = $coursesNodesByIds[$courseId];
+    foreach ($coursesForUnpublishUuids as $courseId) {
+      $courseNode = $coursesNodesByUuids[$courseId];
 
       if ($courseNode->isPublished()) {
         $unpublishedCount++;
@@ -396,7 +401,7 @@ class ImportCoursesService
     $this->log("Обновлено курсов: {$updatedCount}");
     $this->log("Снято с публикации курсов: {$unpublishedCount}");
 
-    return $coursesNodesByIds;
+    return $coursesNodesByUuids;
   }
 
   private function status($messageText)
