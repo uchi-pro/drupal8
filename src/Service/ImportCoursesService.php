@@ -200,6 +200,12 @@ class ImportCoursesService
     }
 
     foreach ($themesForIgnore as $uuid) {
+      $themeNode = $themesNodesByUuids[$uuid];
+      if (!empty($themeNode) && $themeNode->isPublished() && $themeNode->get('field_theme_id')->getString()) {
+        $themeNode->setUnpublished()->save();
+        $this->warning("Направление <a href=\"/node/{$themeNode->id()}/edit\" target=\"_blank\">{$themeNode->getTitle()}</a> снято с публикации.");
+      }
+
       unset($themesNodesByUuids[$uuid]);
     }
 
@@ -208,26 +214,23 @@ class ImportCoursesService
 
   /**
    * @param array|ApiCourse[] $apiCourses
-   * @param null $parentId
+   * @param ?string $parentId
    *
    * @return array
    */
-  private function getThemes(array $apiCourses, $parentId = null)
+  private function getThemes(array $apiCourses, ?string $parentId = null): array
   {
     $themes = [];
 
-    $ignoredThemesIds = $this->getIgnoredThemesIds();
-
-    $ignoredServiceThemesIds = [
-      'a74d99dd-b941-404d-ba1b-6eb40cc4dc61', // Конструктор курсов
-    ];
+    $ignoredVendorThemesIds = $this->getIgnoredVendorThemesIds();
+    $ignoredServiceThemesIds = $this->getIgnoredServiceThemesIds();
 
     foreach ($apiCourses as $apiCourse) {
       $isTheme = $apiCourse->parentId === $parentId && $apiCourse->lessonsCount === 0 && $apiCourse->childrenCount > 0;
       if (!$isTheme) {
         continue;
       }
-      $isIgnoredTheme = in_array($apiCourse->id, $ignoredThemesIds);
+      $isIgnoredTheme = in_array($apiCourse->id, $ignoredVendorThemesIds);
       if ($isIgnoredTheme) {
         $this->warning("Направление <a href=\"{$this->getApiCourseUrl($apiCourse)}\" target='_blank'>{$apiCourse->title}</a> пропущено согласно настройкам интеграции.");
         continue;
@@ -247,12 +250,39 @@ class ImportCoursesService
   }
 
   /**
-   * @return false|string[]
+   * @return string[]
    */
-  private function getIgnoredThemesIds()
+  private function getIgnoredVendorThemesIds(): array
   {
+    $themesIds = [];
+
     $settings = $this->getSettings();
-    return explode("\n", $settings->get('ignored_themes_ids'));
+    foreach (explode("\n", (string)$settings->get('ignored_themes_ids')) as $line) {
+      $themeId = trim(substr($line, 0, 36));
+      if ($themeId) {
+        $themesIds[] = $themeId;
+      }
+    };
+
+    return $themesIds;
+  }
+
+  /**
+   * @return string[]
+   */
+  private function getIgnoredServiceThemesIds(): array
+  {
+    return [
+      'a74d99dd-b941-404d-ba1b-6eb40cc4dc61', // Конструктор курсов
+    ];
+  }
+
+  /**
+   * @return string[]
+   */
+  private function getIgnoredThemesIds(): array
+  {
+    return array_merge($this->getIgnoredVendorThemesIds(), $this->getIgnoredServiceThemesIds());
   }
 
   /**
@@ -274,15 +304,20 @@ class ImportCoursesService
     $allThemesNodesByUuids = $this->getThemesNodesByUuids();
     $typesNodesByIds = $this->getTypesNodes();
 
+    $ignoredThemesIds = $this->getIgnoredThemesIds();
+
     $coursesForUnpublishUuids = array_keys($coursesNodesByUuids);
 
-    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($allThemesNodesByUuids, $importedThemesNodesByUuids) {
+    $suitableApiCourses = array_filter($apiCourses, function (ApiCourse $apiCourse) use ($allThemesNodesByUuids, $importedThemesNodesByUuids, $ignoredThemesIds) {
       $isTheme = isset($allThemesNodesByUuids[$apiCourse->id]);
       if ($isTheme) {
         return FALSE;
       }
       $isParentThemeExists = isset($importedThemesNodesByUuids[$apiCourse->parentId]);
       if (!$isParentThemeExists) {
+        return FALSE;
+      }
+      if (in_array($apiCourse->id, $ignoredThemesIds)) {
         return FALSE;
       }
       $hasLessons = $apiCourse->lessonsCount > 0;
