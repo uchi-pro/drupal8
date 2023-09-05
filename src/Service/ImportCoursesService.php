@@ -59,7 +59,7 @@ class ImportCoursesService
   }
 
   /**
-   * @return array|ApiCourse[]
+   * @return iterable|ApiCourse[]
    *
    * @throws Exception
    */
@@ -133,11 +133,11 @@ class ImportCoursesService
   }
 
   /**
-   * @param array|ApiCourse[] $apiCourses
+   * @param iterable|ApiCourse[] $apiCourses
    *
    * @return array|Node[]
    */
-  protected function updateTypes(array $apiCourses)
+  protected function updateTypes(iterable $apiCourses)
   {
     $typesNodes = $this->getTypesNodes();
 
@@ -167,11 +167,11 @@ class ImportCoursesService
   }
 
   /**
-   * @param array|ApiCourse[] $apiCourses
+   * @param iterable|ApiCourse[] $apiCourses
    *
    * @return array|Node[]
    */
-  protected function updateThemes(array $apiCourses): array
+  protected function updateThemes(iterable $apiCourses): array
   {
     $themesNodesByUuids = $this->getThemesNodesByUuids();
     $themesForIgnore = array_keys($themesNodesByUuids);
@@ -213,12 +213,12 @@ class ImportCoursesService
   }
 
   /**
-   * @param array|ApiCourse[] $apiCourses
+   * @param iterable|ApiCourse[] $apiCourses
    * @param ?string $parentId
    *
    * @return array
    */
-  private function getThemes(array $apiCourses, ?string $parentId = null): array
+  private function getThemes(iterable $apiCourses, ?string $parentId = null): array
   {
     $themes = [];
 
@@ -286,12 +286,12 @@ class ImportCoursesService
   }
 
   /**
-   * @param array|ApiCourse[] $apiCourses
+   * @param iterable|ApiCourse[] $apiCourses
    * @param array|Node[] $importedThemesNodesByUuids
    *
    * @return array|Node[]
    */
-  protected function updateCourses(array $apiCourses, array $importedThemesNodesByUuids): array
+  protected function updateCourses(iterable $apiCourses, array $importedThemesNodesByUuids): array
   {
     $settings = $this->getSettings();
 
