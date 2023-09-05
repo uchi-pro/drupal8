@@ -59,7 +59,7 @@ class ImportCoursesService
   }
 
   /**
-   * @return iterable|ApiCourse[]
+   * @return array|ApiCourse[]
    *
    * @throws Exception
    */
@@ -73,7 +73,7 @@ class ImportCoursesService
     $identity = Identity::createByAccessToken($url, $accessToken);
     $apiClient = ApiClient::create($identity);
 
-    return $apiClient->courses()->findBy();
+    return iterator_to_array($apiClient->courses()->findBy()->getIterator());
   }
 
   /**
@@ -133,11 +133,11 @@ class ImportCoursesService
   }
 
   /**
-   * @param iterable|ApiCourse[] $apiCourses
+   * @param array|ApiCourse[] $apiCourses
    *
    * @return array|Node[]
    */
-  protected function updateTypes(iterable $apiCourses)
+  protected function updateTypes(array $apiCourses)
   {
     $typesNodes = $this->getTypesNodes();
 
@@ -167,11 +167,11 @@ class ImportCoursesService
   }
 
   /**
-   * @param iterable|ApiCourse[] $apiCourses
+   * @param array|ApiCourse[] $apiCourses
    *
    * @return array|Node[]
    */
-  protected function updateThemes(iterable $apiCourses): array
+  protected function updateThemes(array $apiCourses): array
   {
     $themesNodesByUuids = $this->getThemesNodesByUuids();
     $themesForIgnore = array_keys($themesNodesByUuids);
@@ -213,12 +213,12 @@ class ImportCoursesService
   }
 
   /**
-   * @param iterable|ApiCourse[] $apiCourses
+   * @param array|ApiCourse[] $apiCourses
    * @param ?string $parentId
    *
    * @return array
    */
-  private function getThemes(iterable $apiCourses, ?string $parentId = null): array
+  private function getThemes(array $apiCourses, ?string $parentId = null): array
   {
     $themes = [];
 
@@ -286,12 +286,12 @@ class ImportCoursesService
   }
 
   /**
-   * @param iterable|ApiCourse[] $apiCourses
+   * @param array|ApiCourse[] $apiCourses
    * @param array|Node[] $importedThemesNodesByUuids
    *
    * @return array|Node[]
    */
-  protected function updateCourses(iterable $apiCourses, array $importedThemesNodesByUuids): array
+  protected function updateCourses(array $apiCourses, array $importedThemesNodesByUuids): array
   {
     $settings = $this->getSettings();
 
