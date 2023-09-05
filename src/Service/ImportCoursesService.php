@@ -126,7 +126,9 @@ class ImportCoursesService
 
     foreach ($nodes as $node) {
       $courseId = $node->get('field_course_id')->getString();
-      $nodesByIds[$courseId] = $node;
+      if (!empty($courseId)) {
+        $nodesByIds[$courseId] = $node;
+      }
     }
 
     return $nodesByIds;
@@ -425,11 +427,16 @@ class ImportCoursesService
       $courseNode = $coursesNodesByUuids[$courseId];
 
       if ($courseNode->isPublished()) {
-        $unpublishedCount++;
-        $courseNode->setUnpublished();
-        $courseNode->save();
+        $isCourseLocked = (bool)$courseNode->get('field_course_locked');
+        if (!$isCourseLocked) {
+          $unpublishedCount++;
+          $courseNode->setUnpublished();
+          $courseNode->save();
 
-        $this->status("Курс <a href=\"/node/{$courseNode->id()}/edit\" target=\"_blank\">{$courseNode->get('field_course_title')->getString()}</a> снят с публикации.");
+          $this->status("Курс <a href=\"/node/{$courseNode->id()}/edit\" target=\"_blank\">{$courseNode->get('field_course_title')->getString()}</a> снят с публикации.");
+        } else {
+          $this->status("Курс <a href=\"/node/{$courseNode->id()}/edit\" target=\"_blank\">{$courseNode->get('field_course_title')->getString()}</a> не снят с публикации т.к. защищён.");
+        }
       }
     }
 
